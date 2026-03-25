@@ -478,14 +478,138 @@ Apply PowerInfer's hot/cold concept to MoE experts:
 - Hot 30% (~154 experts) covers majority of activations
 - Estimated VRAM for hot experts: ~8-12 GB (fits RTX 3060)
 
-### 4.6 Phase 2b: Metal Backend (Apple Silicon)
+### 4.6 Phase 2b: Metal Backend (Apple Silicon — M5/A19 Optimized)
 
-- Port key compute kernels to Metal Shading Language: GEMM, attention, fused DeltaNet blocks
-- Unified memory allocator using `MTLBuffer` shared heaps (zero-copy CPU↔GPU)
-- Hybrid Memory Manager (Phase 1a) adapted for unified memory — recurrent state + HOT KV tier share the same heap, no copies
-- Hot/Warm/Cold cache tiering mapped to unified memory with async background eviction
-- Goal: 27B Q4 model running entirely in a 32 GB M-series Mac's memory pool
-- CI: macOS Apple Silicon build targets, Metal vs CPU benchmarks
+#### The M5 Opportunity
+
+Apple's M5 (Oct 2025) and M5 Pro/Max (Mar 2026) introduced **GPU Neural Accelerators** — dedicated matrix multiplication hardware inside every GPU core, functionally equivalent to NVIDIA tensor cores. Combined with Metal 4's first-class tensor support, this is the most significant Apple Silicon upgrade for local LLM inference.
+
+**Hardware specs that matter for us:**
+
+| Chip | GPU Cores | Neural Accels | FP16 Matmul | Memory | Bandwidth |
+|---|---|---|---|---|---|
+| M5 | 10 | 10 | ~14.8 TFLOPS | 32 GB | 153.6 GB/s |
+| M5 Pro | 20 | 20 | ~29.6 TFLOPS | 64 GB | 307 GB/s |
+| M5 Max (high) | 40 | 40 | ~70 TFLOPS | 128 GB | 614 GB/s |
+
+**Apple's own LLM benchmarks (M5 vs M4):**
+
+| Model | Prefill Speedup | Token Gen Speedup |
+|---|---|---|
+| Qwen 14B (4-bit) | 4.06x | 1.19x |
+| Qwen 30B MoE (4-bit) | 3.52x | 1.25x |
+| Qwen3 8B | 3.65x | 2.95x |
+
+**Key insight: prefill is now cheap, decode is still expensive.** The Neural Accelerators deliver 3.5-4x prefill speedup (compute-bound), but token generation is still bandwidth-limited (~15 GB/s per core vs ~93 GB/s needed for full Neural Accelerator utilization). This validates LeanInfer's focus — every decode-time optimization we build (quantization, KV compression, expert paging, speculative decoding) directly addresses the M5's bottleneck.
+
+#### Metal 4 TensorOps (Primary Compute Path)
+
+Metal 4 (WWDC 2025) makes tensors first-class citizens in the API and Metal Shading Language. This is our primary compute interface — **not** hand-written Metal shaders.
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                  Metal 4 Compute Stack                       │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│  TensorOps API                                              │
+│  • Direct programming interface to Neural Accelerators      │
+│  • First-class multi-dimensional tensor types               │
+│  • Hardware-accelerated matmul dispatched to Neural Accels  │
+│  • Supported types: FP16, INT8 (native HW), BF16 (SW)      │
+│                                                             │
+│  Metal Performance Primitives (MPP)                         │
+│  • High-perf matrix multiplication kernels                  │
+│  • Convolution primitives                                   │
+│  • Integrated into Shader ML for fused compute              │
+│  • Optimal tiling for 32x32+ matrices                       │
+│                                                             │
+│  Shader ML                                                  │
+│  • Embed ML inference directly within shaders               │
+│  • No sync overhead between device memory and compute       │
+│  • Fuse multiple ops into single dispatch                   │
+│                                                             │
+│  LeanInfer Integration Points:                              │
+│  • GEMM: MPP matmul → Neural Accelerators                  │
+│  • Attention: TensorOps for Q*K^T and attn*V               │
+│  • DeltaNet: Fused gated delta rule via Shader ML           │
+│  • Expert FFN: Per-expert matmul via MPP                    │
+│                                                             │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**Why TensorOps over hand-written kernels:**
+- Neural Accelerators process matrices in hardware-optimal 32x32 tiles — TensorOps handles tiling automatically
+- Matrix transpose is free in hardware — no need to pre-transpose weights
+- Apple will optimize TensorOps across silicon generations; hand-written kernels won't get those gains
+- MLX already has preliminary Neural Accelerator support via this path
+
+#### Quantization Strategy for Neural Accelerators
+
+The Neural Accelerators have native hardware support for specific types:
+
+| Type | Hardware Accelerated? | Our Use |
+|---|---|---|
+| FP16 (FP16/FP32 accum) | **Yes — native** | Attention layers (quality-critical) |
+| INT8 (INT32 accum) | **Yes — native** | Hot expert weights, KV cache |
+| BF16 | Software via framework | Alternative to FP16 where supported |
+| INT4 | **No — software dequant** | FFN/cold experts (size over speed) |
+
+**Implication for our quant presets:**
+- **Attention layers → Q8_0 or FP16** — gets full Neural Accelerator hardware path
+- **FFN layers → Q4_K** — larger, less sensitive to precision, INT4 dequant overhead acceptable because FFN is the bigger bandwidth consumer
+- **KV cache → Q8_KV** — hardware-accelerated INT8 reads during attention
+- This is a different optimal strategy than CUDA (where everything benefits from INT4 equally)
+
+#### ARM SME/SME2 on CPU (Fallback Path)
+
+M5 CPU cores support **Scalable Matrix Extensions** (ARMv9.2a):
+- `FMOPA` / `UMOPA` / `BFMOPA` — outer-product accumulate instructions
+- Hardware-accelerated matrix ops on CPU, no GPU needed
+- Use for: cold expert computation, small matmuls below GPU dispatch threshold, preprocessing
+- ik_llama.cpp's ARM NEON path should be extended to exploit SME when available
+
+#### Implementation Plan
+
+```
+Step 1: Metal 4 backend skeleton
+  • MTLDevice, MTLCommandQueue, MTLComputePipelineState setup
+  • Unified memory allocator using MTLBuffer shared heaps (zero-copy)
+  • Backend registration in ggml (alongside CPU, CUDA)
+
+Step 2: Core compute via TensorOps + MPP
+  • GEMM dispatch through Metal Performance Primitives → Neural Accelerators
+  • Attention kernels via TensorOps (Q*K^T, softmax, attn*V)
+  • Fused RMSNorm + matmul where MPP supports it
+
+Step 3: DeltaNet + hybrid memory on unified pool
+  • Recurrent state + HOT KV tier share same MTLBuffer heap — no copies
+  • DeltaNet gated delta rule as fused Shader ML kernel
+  • 3× DeltaNet → 1× Attention block pattern exploited for prefetch
+
+Step 4: Tiered memory on unified architecture
+  • HOT: GPU-preferred MTLBuffer (attention, router, hot experts)
+  • WARM: Shared MTLBuffer (compressed experts, older KV)
+  • COLD: Disk-backed with async page-in to MTLBuffer
+  • Anti-thrash cooldown on tier transitions
+  • 32 MB SLC-aware: tensors < 32 MB that are reused stay in SLC for free
+
+Step 5: Benchmarks + quant presets
+  • M5-specific quant presets (Q8 attn + Q4 FFN, optimized for Neural Accelerator HW types)
+  • Prefill benchmark (should show 3-4x vs CPU-only on M5)
+  • Decode benchmark (should show bandwidth-limited gains)
+  • macOS CI targets for Apple Silicon
+```
+
+**Model fit on M5 family:**
+
+| Model | Q4 Size | FP16 Size | Fits on M5 (32GB) | Fits on M5 Pro (64GB) | Fits on M5 Max (128GB) |
+|---|---|---|---|---|---|
+| Qwen 3.5-9B | ~5 GB | ~18 GB | Q4 + FP16 both fit | Comfortable | Comfortable |
+| Qwen 3.5-27B | ~15 GB | ~54 GB | Q4 fits | Q4 + room; FP16 fits | FP16 + full KV |
+| DeepSeek-R1-14B | ~8 GB | ~28 GB | Q4 fits | Both fit | Both fit |
+| Qwen 3.5-MoE-397B | ~55 GB | ~794 GB | Expert paging | Hot experts fit | ~40% resident |
+
+**Bottom line:** M5 Max with 128 GB unified memory at 614 GB/s is the most powerful consumer device for local LLM inference. LeanInfer + Metal 4 TensorOps makes it sing — Neural Accelerators handle the compute, our bandwidth optimizations handle the decode bottleneck.
 
 ### 4.7 Phase 3: Speed & Intelligence
 
@@ -555,17 +679,23 @@ else:
 - On CUDA: must account for PCIe round-trip (~5-10us) in threshold calculation
 - Combine with ik_llama's tensor overrides (`-ot`) for static placement hints
 
-### 4.8 Phase 4: ANE/CoreML Offload (Optional)
+### 4.8 Phase 4: ANE/CoreML Offload (Deprioritized)
 
-> **This phase is NOT required for a fully functional product.** Metal (Phase 2b) delivers ~90% of Apple Silicon benefit. Phase 4 adds power efficiency — valuable for MacBook battery life, not critical for performance or correctness.
+> **Largely superseded by Metal 4 TensorOps.** On M5, the GPU Neural Accelerators deliver 3.5-4x prefill speedup via Metal 4 — the same compute class that ANE targeted but with full programmability and no CoreML op constraints. The 16-core Neural Engine (38 TOPS) still exists but is less relevant when TensorOps provides direct GPU-side matrix acceleration.
 
-- Export small, fused operators (DeltaNet blocks, per-expert FFNs) as quantized CoreML `.mlmodelc` artifacts
-- Tiered placement policy: ANE for hot low-latency kernels → Metal GPU for large GEMMs/attention → CPU for cold experts
-- Quant presets for ANE: int8/uint8/bfloat16/FP16 conversion toolchain
-- Auto placement policy from offline profiling + runtime telemetry
-- Runtime flags: `--ane-prefetch=N`, per-request `"device_preference": ["ane","metal","cpu"]`
-- **Risk:** CoreML has strict op constraints — DeltaNet's gated delta rule and 1D causal convolution may not map cleanly. If not expressible, those ops stay on Metal GPU with zero functional impact.
-- **Decision point:** Evaluate after Phase 2b shipping whether ANE adds measurable value for target workloads.
+**Remaining ANE use cases (if ever pursued):**
+- Battery-life optimization on MacBook (ANE is more power-efficient than GPU for sustained inference)
+- Background inference while GPU is occupied by other workloads
+- Small model inference (< 3B) where ANE alone may suffice
+
+**Why Metal 4 TensorOps wins over CoreML/ANE for our workloads:**
+- No op constraints — DeltaNet's gated delta rule, 1D causal convolution all expressible
+- Same hardware acceleration path (Neural Accelerators inside GPU cores)
+- Full control over memory layout, tiling, fusion
+- No model export/conversion step — compute inline with our inference loop
+- Apple optimizes TensorOps across silicon generations automatically
+
+**Decision:** Skip Phase 4 unless battery-life profiling on MacBook shows a compelling case. Metal 4 TensorOps (Phase 2b) covers 99% of the compute acceleration need.
 
 ### 4.9 North Star: Streaming Neural Network
 
@@ -719,7 +849,9 @@ ik_llama.cpp is a hard fork with one primary developer (multiple commits daily):
 | Predictive expert prefetch | No | No | No | **Yes** |
 | CPU inference speed | Baseline | 2-3x faster | ~Baseline | **2-3x (inherited)** |
 | Quant quality | Good | Best | Good | **Best (inherited)** |
-| Backend breadth | 18 | 2 | Via llama.cpp | **3: CPU + CUDA + Metal** |
+| Metal 4 TensorOps | No | No | No (via llama.cpp Metal) | **Yes — Neural Accelerator targeting** |
+| M5 Neural Accel quant presets | No | No | No | **Q8 attn + Q4 FFN (HW-aware)** |
+| Backend breadth | 18 | 2 | Via llama.cpp | **3: CPU + CUDA + Metal 4** |
 | Model breadth | Universal | Wide | Universal | **Focused (reasoning)** |
 
 **Our niche:** The best runtime for reasoning models on consumer hardware. Not trying to be everything for everyone.
