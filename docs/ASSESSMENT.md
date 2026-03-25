@@ -543,6 +543,8 @@ Metal 4 (WWDC 2025) makes tensors first-class citizens in the API and Metal Shad
 - Apple will optimize TensorOps across silicon generations; hand-written kernels won't get those gains
 - MLX already has preliminary Neural Accelerator support via this path
 
+**Backwards compatibility:** TensorOps API is the same across M1 through M5 (and A14+). On M5/A19 hardware, TensorOps dispatches to the dedicated Neural Accelerators (3.5-4x prefill gain). On M1-M4 hardware, the same API runs on standard GPU shader cores — still faster than CPU, just without hardware matrix acceleration. **One code path covers the entire ~100M+ M-series installed base.** No chip-specific branching, no separate kernels. This is a significant advantage over CUDA, where different GPU compute capabilities require different kernel configurations.
+
 #### Quantization Strategy for Neural Accelerators
 
 The Neural Accelerators have native hardware support for specific types:
