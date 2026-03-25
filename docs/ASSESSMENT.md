@@ -545,6 +545,77 @@ Metal 4 (WWDC 2025) makes tensors first-class citizens in the API and Metal Shad
 
 **Backwards compatibility:** TensorOps API is the same across M1 through M5 (and A14+). On M5/A19 hardware, TensorOps dispatches to the dedicated Neural Accelerators (3.5-4x prefill gain). On M1-M4 hardware, the same API runs on standard GPU shader cores — still faster than CPU, just without hardware matrix acceleration. **One code path covers the entire ~100M+ M-series installed base.** No chip-specific branching, no separate kernels. This is a significant advantage over CUDA, where different GPU compute capabilities require different kernel configurations.
 
+#### Cooperative Tensors (Eliminating Device Memory Round-Trips)
+
+Metal 4 introduces three tensor storage types. The critical one for us is `cooperative_tensor`:
+
+| Tensor Type | Storage Location | Use Case |
+|---|---|---|
+| `tensor_handle` | Device memory (unified RAM) | Model weights, KV cache — the large, persistent data |
+| `tensor_inline` | Constructed on GPU | Build input tensors inside shaders on the fly |
+| `cooperative_tensor` | **Thread registers + threadgroup SRAM** | **Intermediate results — never hits device memory** |
+
+**How cooperative tensors save bandwidth:**
+
+Traditional pipeline (without cooperative tensors):
+```
+weights → matmul → [write to device mem] → [read from device mem] → activation
+→ [write to device mem] → [read from device mem] → next matmul → ...
+```
+
+With cooperative tensors:
+```
+weights → matmul → [stays in registers] → activation → [stays in registers]
+→ next matmul → [stays in registers] → write final output to device mem
+```
+
+**Intermediate results never touch device memory.** The data is distributed across participating threads' register files (implementation-defined partitioning). This is analogous to NVIDIA's warp-level register tiling / WMMA fragments.
+
+**Impact on LeanInfer decode performance:**
+
+For Qwen 3.5-27B, each token processes 64 layers. Without cooperative tensors, each layer generates ~10+ intermediate device memory round-trips (RMSNorm output, Q/K/V projections, attention scores, FFN gate, FFN up, FFN down). With cooperative tensors fusing operations within a layer:
+
+| Metric | Without Cooperative Tensors | With Cooperative Tensors |
+|---|---|---|
+| Device memory round-trips per layer | ~10+ | ~2 (load weights, write output) |
+| Per-token device memory traffic (64 layers) | ~640+ accesses | ~128 accesses |
+| Bandwidth pressure during decode | Very high | **~5x reduction in intermediate traffic** |
+
+This directly attacks the decode bottleneck — the Neural Accelerators can compute faster than memory can feed them, so eliminating unnecessary memory traffic lets them stay fed longer.
+
+**Fused operations enabled by cooperative tensors:**
+
+```
+Fused Attention Block (single dispatch, no device mem sync):
+  RMSNorm → Q/K/V projection → attention scores → softmax → attn*V
+  All intermediates in cooperative_tensor registers
+
+Fused FFN Block (single dispatch):
+  RMSNorm → gate projection → SiLU activation → up projection → multiply → down projection
+  All intermediates in cooperative_tensor registers
+
+Fused DeltaNet Block (single dispatch):
+  Conv1D carry state → gated delta rule → state update → output projection
+  All intermediates in cooperative_tensor registers
+```
+
+**Programming model:** Cooperative tensors are **explicit** — we design our Metal compute kernels to use them. They are not automatic. We choose the execution scope (`execution_simdgroup` for Neural Accelerator dispatch), declare intermediates as `cooperative_tensor`, and chain TensorOps within a single shader dispatch. The compiler handles the register allocation and thread distribution.
+
+**Execution scopes for TensorOps:**
+
+| Scope | Threads | Neural Accelerator? | Our Use |
+|---|---|---|---|
+| `execution_thread` | 1 | No | Fragment shaders, divergent paths |
+| `execution_simdgroup` | 32 | **Yes (M5)** | **Primary: all GEMM, attention, FFN** |
+| `execution_threadgroup` | All in group | No (perf drop) | Avoid for now |
+
+**Optimal tile size:** 32×32 or larger for Neural Accelerator dispatch. K dimension must be multiple of 32. Optimal pipelining at **128×64×64** tiles (from llama.cpp Metal 4 integration benchmarks: 2.4x speedup on Llama 8B Q4_0 prefill).
+
+**llama.cpp Metal 4 real-world results (M5):**
+- Llama 8B Q4_0 pp512: **609 t/s** (vs 257 t/s baseline = 2.4x)
+- Qwen3 0.6B FP16 pp512: **4,936 t/s** (vs 3,073 t/s = 1.6x)
+- GPT-OSS 20B pp512: **846 t/s** (vs 415 t/s = ~2x)
+
 #### Quantization Strategy for Neural Accelerators
 
 The Neural Accelerators have native hardware support for specific types:
