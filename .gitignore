@@ -1,0 +1,34 @@
+# Build
+build/
+*.o
+*.a
+*.so
+*.dylib
+
+# Upstream source (managed via subtree)
+upstream/
+
+# Models and weights
+*.gguf
+*.bin
+*.safetensors
+models/
+
+# Profiles (generated, can be large)
+profiles/*.dat
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
