@@ -666,12 +666,105 @@ Step 4: Tiered memory on unified architecture
   • Anti-thrash cooldown on tier transitions
   • 32 MB SLC-aware: tensors < 32 MB that are reused stay in SLC for free
 
-Step 5: Benchmarks + quant presets
+Step 5: Tile size auto-tuning (see below)
+
+Step 6: Benchmarks + quant presets
   • M5-specific quant presets (Q8 attn + Q4 FFN, optimized for Neural Accelerator HW types)
   • Prefill benchmark (should show 3-4x vs CPU-only on M5)
   • Decode benchmark (should show bandwidth-limited gains)
   • macOS CI targets for Apple Silicon
 ```
+
+#### TensorOps Tile Size Auto-Tuning
+
+The Neural Accelerator's minimum tile is 32×32, but optimal performance depends on balancing register pressure, memory staging, and pipeline occupancy. The optimal tile varies by **matrix shape class** (not per-layer — all layers of the same type share a shape).
+
+**Hardware constraints (fixed per chip generation):**
+
+| Constraint | Value | Impact |
+|---|---|---|
+| Minimum tile | 32×32 | Hardware floor — K dimension must be multiple of 32 |
+| SIMD group width | 32 threads | Cooperative tensor distributes across exactly 32 threads |
+| Register file per thread | Limited (chip-specific) | Larger tiles = more register pressure, potential spills |
+| Threadgroup SRAM | ~32-64 KB (chip-specific) | Limits how much data can be staged from device memory |
+| K-split threshold | K ≥ 4096 | K-dimension splitting beneficial above this (from llama.cpp benchmarks) |
+
+**Model-specific matrix shape classes (what we tune for):**
+
+Each model architecture has ~5 distinct matrix shape classes. Once tuned, the tile config applies to every layer of that type:
+
+```
+┌──────────────────────────────────────────────────────────────────┐
+│          Qwen 3.5-27B Matrix Shape Classes                       │
+├──────────────────────┬───────────────────────────────────────────┤
+│ Shape Class          │ Dimensions (decode, batch=1)              │
+├──────────────────────┼───────────────────────────────────────────┤
+│ Attention QKV proj   │ [1, 5120] × [5120, 5120+1280]            │
+│ Attention scores     │ [1, n_ctx] × [n_ctx, 128]  (per head)    │
+│ Attention output     │ [1, 5120] × [5120, 5120]                 │
+│ FFN gate + up        │ [1, 5120] × [5120, 27648] (fused)        │
+│ FFN down             │ [1, 27648] × [27648, 5120]               │
+│ DeltaNet state       │ [128, 128] state matrix update           │
+│ Output head          │ [1, 5120] × [5120, vocab]                │
+├──────────────────────┴───────────────────────────────────────────┤
+│ Prefill (batch=N): same shapes but M dimension = N              │
+│ → larger M benefits from larger M-tiles                         │
+└──────────────────────────────────────────────────────────────────┘
+
+Qwen 3.5-9B: same classes, different dims (hidden=3584, ffn=18944)
+DeepSeek-R1-14B: same classes, different dims (hidden=5120, ffn=13824)
+MoE models: add per-expert FFN shape class (smaller, batched)
+```
+
+**Tile sweep strategy:**
+
+```
+Phase 1: Baseline (use llama.cpp's proven configs)
+  • Default: M=128, N=64, K=64 (best general-purpose from llama.cpp Metal 4 PR)
+  • K-split enabled for K ≥ 4096
+
+Phase 2: Per-shape-class sweep (automated, ~50 runs per model)
+  • Tile candidates for M: [32, 64, 128, 256]
+  • Tile candidates for N: [32, 64, 128]
+  • Tile candidates for K: [32, 64, 128, 256]
+  • For each shape class: benchmark all valid combinations
+  • Metric: tokens/sec for decode (batch=1) and prefill (batch=512)
+  • Constraint: skip configs that exceed register budget (detected by compiler)
+
+Phase 3: Store results in model presets
+  • configs/presets/qwen35-27b-quality.conf gains tile config section:
+    [metal_tiles]
+    attn_qkv  = 128x64x64
+    attn_score = 32x128x32
+    attn_out  = 128x64x64
+    ffn_gate  = 128x64x128
+    ffn_down  = 64x64x128
+    deltanet  = 32x32x128
+    output    = 64x64x64
+
+Phase 4: Runtime selection
+  • On startup: load tile config from preset, compile Metal pipelines
+    with constexpr tile dimensions baked into shader constants
+  • If no preset: fall back to Phase 1 defaults
+  • Optional: --metal-tile-sweep flag runs Phase 2 on first launch,
+    caches results for future runs
+```
+
+**Why this works (it's NOT pure trial-and-error):**
+- Only ~5 shape classes per model architecture, not 64 layers
+- Each shape class has ~40-60 valid tile combinations to test
+- One sweep takes minutes (short matmul benchmarks), results are permanent
+- Ship presets for our target models (Qwen 3.5, DeepSeek-R1) — users never sweep
+- This is exactly how cuBLAS works: pre-benchmarked tile lookup tables per matrix shape
+
+**Decode vs Prefill tile strategy:**
+
+| Phase | Matrix Shape | Optimal Tile Strategy |
+|---|---|---|
+| **Decode** (batch=1) | Tall-skinny: [1, K] × [K, N] | Small M-tile (32-64), larger K-tile for bandwidth |
+| **Prefill** (batch=N) | Square-ish: [N, K] × [K, N] | Large M-tile (128-256), balanced K-tile for compute |
+
+The decode path is bandwidth-limited (loading weights dominates), so tile strategy focuses on minimizing memory stalls. The prefill path is compute-limited (Neural Accelerators are fully utilized), so tile strategy maximizes arithmetic intensity. Cooperative tensors matter most during decode — keeping intermediates in registers saves the bandwidth that weights need.
 
 **Model fit on M5 family:**
 
@@ -878,6 +971,7 @@ LeanInfer/
 │   ├── setup.sh                  # Clone upstream + apply patches
 │   ├── quantize.sh               # One-command quant with presets
 │   ├── benchmark.sh              # Reasoning-specific benchmarks (Phase 0c)
+│   ├── tile_sweep.py             # Metal tile auto-tuning (Phase 2b Step 5)
 │   └── rebase.sh                 # Rebase patches on new upstream
 └── tests/
     ├── test_hybrid_memory.py
