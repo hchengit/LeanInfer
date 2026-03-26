@@ -32,6 +32,7 @@
 | Analysis script (CLI trace summary) | ✅ Working | `instrument/analyze.py` |
 | Baseline trace (Qwen 2.5-0.5B) | ✅ Captured | `traces/first_run.json` — 72.7 tok/s, 93.9% in graph_compute |
 | Per-node trace (Qwen 2.5-0.5B) | ✅ Captured | `traces/per_layer_run.json` — 13,362 events, full op breakdown |
+| Per-node trace (Qwen 3.5-9B hybrid) | ✅ Captured | `traces/qwen35_9b_run.json` — 45,442 events, DeltaNet/Attention breakdown |
 | Expert usage tracker (MoE) | ⬜ Not started | Needs MoE model to test |
 | Benchmark harness (multi-turn, long-think) | ⬜ Not started | `scripts/benchmark.sh` |
 
@@ -56,6 +57,32 @@ Compute time breakdown by operation type (decode, 17 tokens):
   • Attention = ~10% — already fast thanks to ik_llama's flash attention
   • Layers are perfectly uniform (2.5-3.2% each, no outliers)
   • On larger models (8B+), FFN share rises to 60-70%+ as output head shrinks proportionally
+```
+
+**Phase 0b Profiling Results (Qwen 3.5-9B Q4_K_M HYBRID, Ryzen 7735U AVX2, 8 threads):**
+
+```
+Baseline: 6.08 tok/s decode, 29.5 tok/s prefill
+Architecture: qwen35 — 32 layers, 24 DeltaNet + 8 Attention (3:1 pattern)
+DeltaNet layers: [0,1,2], [4,5,6], [8,9,10], [12,13,14], [16,17,18], [20,21,22], [24,25,26], [28,29,30]
+Attention layers: [3, 7, 11, 15, 19, 23, 27, 31]
+
+  Category             % of Compute    Details
+  ─────────────────    ────────────    ──────────────────────────────────
+  DeltaNet layers         49.9%       24 layers — recurrent state + linear attn
+  FFN (all layers)        30.3%       ffn_up_gate fused matmul — biggest single op
+  Output head             14.0%       result_output — vocab projection
+  Attention layers        14.2%       8 layers — standard softmax attention
+  qkv_mixed               13.6%       Q/K/V projections (both layer types)
+  delta_net_fused_raw      1.4%       Actual DeltaNet state update (cheap!)
+  linear_attn_out          5.3%       Linear attention output projection
+
+  Key findings:
+  • DeltaNet state update itself is only 1.4% — the projections around it dominate
+  • Cooperative tensor fusion target: qkv_mixed + delta_net_fused → single dispatch
+  • FFN remains the biggest single op (30.3%) — same as standard transformers
+  • 3:1 DeltaNet:Attention confirmed — exactly as Qwen 3.5 spec documents
+  • ssm_a tensors show "unknown" — ik_llama.cpp has partial Qwen 3.5 support
 ```
 
 ### Phase 1: Fix Qwen 3.5
