@@ -161,7 +161,7 @@ Key Findings — What The Data Proves:
   Optimization Priority (confirmed by data):
   ──────────────────────────────────────────
   #1  FFN quantization + expert paging       (30-43% of compute, growing)
-  #2  Cooperative tensor fusion              (28-32% intermediate traffic)
+  #2  Kernel fusion — CUDA + Metal           (28-32% intermediate traffic — see §4.4b)
   #3  KV cache compression                  (attention benefits, DeltaNet doesn't need KV)
   #4  DeltaNet state management             (9.2% — fix correctness first, optimize later)
 ```
@@ -198,7 +198,9 @@ Key Findings — What The Data Proves:
 | Component | Status | Location |
 |-----------|--------|----------|
 | Reasoning-aware speculative decoding | ⬜ Not started | — |
-| Fused DeltaNet + Attention pipeline | ⬜ Not started | — |
+| Fused DeltaNet block (proj + state + output) | ⬜ Not started | Novel — CUDA + Metal (see §4.4b) |
+| Fused FFN block (norm + gate + SiLU + up + down) | ⬜ Not started | CUTLASS epilogues (CUDA), cooperative tensors (Metal) |
+| RMSNorm + projection fusion | ⬜ Not started | Both platforms, medium complexity |
 | Default runtime repacking (-rtr) | ⬜ Not started | — |
 | Predictive expert prefetch | ⬜ Not started | — |
 | Dynamic CPU/GPU operator routing | ⬜ Not started | — |
@@ -609,6 +611,98 @@ The fundamental bottleneck in autoregressive decoding is **memory bandwidth, not
 **GGUF enables this natively.** Each tensor has a name, offset, size, and dtype in the tensor directory. We can `seek(offset) → read(size)` for any individual tensor without loading the full file. llama.cpp already mmaps the GGUF, but with no intelligence about what to page. We add the intelligence.
 
 **NUMA-aware placement (multi-socket systems):** On dual-socket Xeon/EPYC systems, keep tensors on the NUMA node closest to the cores using them. llama.cpp community has documented 20-40% speedup from proper NUMA binding on multi-socket machines.
+
+### 4.4b Kernel Fusion Strategy (CUDA + Metal)
+
+Our profiling revealed 28-32% of compute is "Other" — intermediate device memory round-trips between operations. This exists on **both** CUDA and Metal. Eliminating these is a major opportunity on all hardware.
+
+**The problem — unfused operations:**
+```
+kernel 1: RMSNorm        → write to device memory
+kernel 2: Q projection   → read from device, write to device
+kernel 3: K projection   → read from device, write to device
+kernel 4: attention       → read from device, write to device
+kernel 5: output proj     → read from device, write to device
+... each kernel launch has overhead + device memory round-trip
+```
+
+**The solution — fused operations:**
+```
+kernel 1: RMSNorm + QKV projection  → stays in registers / shared memory
+         → attention                → stays in shared memory
+         → output projection        → ONE write to device memory
+```
+
+#### Platform Comparison
+
+| Concept | Metal 4 | CUDA |
+|---|---|---|
+| Keep intermediates in fast storage | **Cooperative tensors** (thread registers) | **Register tiling + shared memory** |
+| Fuse multiple ops in one dispatch | **TensorOps chain** (single shader) | **Kernel fusion** (single kernel launch) |
+| Hardware matrix acceleration | **Neural Accelerators** via execution_simdgroup | **Tensor Cores** via WMMA/MMA intrinsics |
+| Tooling | TensorOps + MPP (clean API) | CUTLASS templates / Triton / hand-written CUDA |
+| Maturity | New (Metal 4, 2025) | Established (since Volta, 2017) |
+
+#### What ik_llama.cpp Already Fuses (Inherited)
+
+| Fused Op | What It Eliminates | Status |
+|---|---|---|
+| `fused_up_gate` | FFN gate + up in one matmul | ✅ Already done |
+| `fused_moe` (-fmoe) | MoE gate + up + down in one dispatch | ✅ Already done |
+| `fused_mmad` | Matmul + add | ✅ Already done |
+| Flash Attention (`-fa`) | Entire attention in one kernel | ✅ Already done |
+
+#### Our Fusion Targets (What We Add)
+
+| Fusion Target | Round-Trips Eliminated | Platform | Complexity | Impact |
+|---|---|---|---|---|
+| **RMSNorm + QKV projection** | 1 per layer | CUDA + Metal | Medium | ~3-5% speedup |
+| **DeltaNet: proj + state update + output** | 3-4 per DeltaNet layer | CUDA + Metal | Hard (novel) | ~8-12% speedup |
+| **FFN: norm + gate + SiLU + up + down** | 4 per layer | CUDA + Metal | Hard | ~10-15% speedup |
+| **Attention: norm + QKV + flash_attn + out** | 2 per attn layer | CUDA + Metal | Medium | ~3-5% speedup |
+
+**Estimated total impact per model:**
+
+| Model | Layers | Fused Round-Trips Eliminated | Estimated Speedup |
+|---|---|---|---|
+| Qwen 3.5-9B | 32 (24 DeltaNet + 8 Attn) | ~100 per token | **15-25%** |
+| Qwen 3.5-27B | 64 (48 DeltaNet + 16 Attn) | ~200 per token | **15-25%** |
+| Qwen3-14B | 40 (all Attn) | ~120 per token | **10-20%** |
+
+#### CUDA Implementation Path
+
+```
+Phase A: Use ik_llama.cpp's existing fusions (already done)
+  • fused_up_gate, fused_moe, flash_attention — inherited
+
+Phase B: Add RMSNorm + projection fusions (CUTLASS epilogues)
+  • CUTLASS fused GEMM with custom epilogue: norm → matmul in one kernel
+  • Applies to both QKV and FFN entry points
+  • Template-based — works across quant types
+
+Phase C: DeltaNet block fusion (novel — our unique contribution)
+  • Fuse: qkv_mixed → delta_net_fused_raw → linear_attn_out
+  • Keep recurrent state in shared memory across the 3 DeltaNet layers
+  • No existing implementation anywhere — this is greenfield
+  • Targets the 9.2% DeltaNet compute + eliminates intermediate traffic
+
+Phase D: Full FFN block fusion
+  • Fuse: norm → gate → SiLU → up → multiply → down
+  • Requires careful shared memory management (FFN dims are large)
+  • Biggest single-op impact (30-43% of compute made more efficient)
+```
+
+#### Metal Implementation Path
+
+```
+Same fusion targets, cleaner API:
+  • Cooperative tensors for all intermediates
+  • TensorOps chain within single compute dispatch
+  • Shader ML for custom DeltaNet fusions
+  • See Phase 2b Metal Backend section for full details
+```
+
+**The DeltaNet fusion is unique to us on both platforms.** Nobody else is optimizing for Qwen 3.5's hybrid architecture. Flash Attention was the last major fusion breakthrough in inference — DeltaNet block fusion could be the next one for hybrid models.
 
 ### 4.5 Phase 2: RAM Reduction Engine
 
