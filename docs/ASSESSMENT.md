@@ -172,7 +172,7 @@ Key Findings — What The Data Proves:
 |-----------|--------|----------|
 | Hybrid memory manager (dual recurrent + KV) | ✅ Working | `src/llama.cpp` (seq_rm fix) + `examples/server/server-context.cpp` (checkpoint fix) |
 | Thinking control layer (--no-think) | ✅ Working | `common/common.h` + `common/common.cpp` — bans `<think>` token, sets reasoning_budget=0, presence_penalty=1.5 |
-| Recurrent state quantization (Q8_KV) | ⬜ Not started | — |
+| Recurrent state quantization (FP16) | ✅ Working | `src/llama.cpp` (alloc FP16) + `src/llama-delta-net.cpp` (cast on read, auto-convert on write) — 50% state memory reduction |
 
 ### Phase 2: RAM Reduction
 
