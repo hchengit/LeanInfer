@@ -171,7 +171,7 @@ Key Findings — What The Data Proves:
 | Component | Status | Location |
 |-----------|--------|----------|
 | Hybrid memory manager (dual recurrent + KV) | ⬜ Not started | — |
-| Thinking control layer (--no-think) | ⬜ Not started | — |
+| Thinking control layer (--no-think) | ✅ Working | `common/common.h` + `common/common.cpp` — bans `<think>` token, sets reasoning_budget=0, presence_penalty=1.5 |
 | Recurrent state quantization (Q8_KV) | ⬜ Not started | — |
 
 ### Phase 2: RAM Reduction
