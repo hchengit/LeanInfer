@@ -8,19 +8,32 @@
 
 ## 0. Progress Tracker
 
+### Infrastructure
+
+| Component | Status | Location |
+|-----------|--------|----------|
+| Git repo initialized | ✅ Done | `/home/junc/LeanInfer/` (7 commits, main branch) |
+| ik_llama.cpp cloned + built (CPU/AVX2) | ✅ Built | `upstream/` (Ryzen 7735U, 8 threads, no CUDA) |
+| Test model (Qwen 2.5-0.5B Q4_K_M) | ✅ Downloaded | `models/qwen2.5-0.5b-instruct-q4_k_m.gguf` (469 MB) |
+| Remote repo (GitHub) | ⬜ Not started | — |
+| CI pipeline (Linux + macOS) | ⬜ Not started | — |
+
 ### Phase 0: Instrument & Measure
 
-| Task | Status | Date | Notes |
-|---|---|---|---|
-| 0a. Profiler library (leaninfer_profiler.h/.cpp) | DONE | 2026-03-25 | Chrome tracing JSON, zero overhead when disabled |
-| 0a. Hook points in ik_llama.cpp (3 hooks) | DONE | 2026-03-25 | llama_decode, ubatch loop, graph_compute |
-| 0a. CMake integration (-DLEANINFER_PROFILE=ON) | DONE | 2026-03-25 | Compiles into llama library |
-| 0a. Analysis script (analyze.py) | DONE | 2026-03-25 | CLI summary + Perfetto visualization confirmed |
-| 0a. Baseline captured | DONE | 2026-03-25 | Ryzen 7735U: 72.7 tok/s, 93.9% in graph_compute |
-| 0b. Per-node instrumentation in ggml.c | DONE | 2026-03-26 | 13,362 events per 16-token run, per-op-type breakdown |
-| 0b. Per-node analysis results | DONE | 2026-03-26 | See profiling results below |
-| 0b. Expert usage tracker (MoE) | TODO | — | Needs MoE model to test |
-| 0c. Benchmark harness (multi-turn, long-think) | TODO | — | Standardized reasoning benchmarks |
+| Component | Status | Location |
+|-----------|--------|----------|
+| Profiler library | ✅ Working | `instrument/leaninfer_profiler.h` + `.cpp` |
+| Chrome tracing JSON output | ✅ Working | Perfetto visualization confirmed |
+| CMake integration (-DLEANINFER_PROFILE=ON) | ✅ Working | `upstream/src/CMakeLists.txt` |
+| Hook: llama_decode (top-level) | ✅ Hooked | `upstream/src/llama.cpp` |
+| Hook: ubatch loop (token batch) | ✅ Hooked | `upstream/src/llama.cpp` |
+| Hook: graph_compute (ggml dispatch) | ✅ Hooked | `upstream/src/llama.cpp` |
+| Hook: per-node in ggml compute thread | ✅ Hooked | `upstream/ggml/src/ggml.c` (thread 0 only) |
+| Analysis script (CLI trace summary) | ✅ Working | `instrument/analyze.py` |
+| Baseline trace (Qwen 2.5-0.5B) | ✅ Captured | `traces/first_run.json` — 72.7 tok/s, 93.9% in graph_compute |
+| Per-node trace (Qwen 2.5-0.5B) | ✅ Captured | `traces/per_layer_run.json` — 13,362 events, full op breakdown |
+| Expert usage tracker (MoE) | ⬜ Not started | Needs MoE model to test |
+| Benchmark harness (multi-turn, long-think) | ⬜ Not started | `scripts/benchmark.sh` |
 
 **Phase 0b Profiling Results (Qwen 2.5-0.5B Q4_K_M, Ryzen 7735U AVX2, 8 threads):**
 
@@ -47,50 +60,40 @@ Compute time breakdown by operation type (decode, 17 tokens):
 
 ### Phase 1: Fix Qwen 3.5
 
-| Task | Status | Date | Notes |
-|---|---|---|---|
-| 1a. Hybrid memory manager | TODO | — | Dual recurrent state + KV cache |
-| 1b. Thinking control layer (--no-think) | TODO | — | Quickest win for usability |
-| 1c. Recurrent state quantization (Q8_KV) | TODO | — | 75% memory reduction for DeltaNet state |
+| Component | Status | Location |
+|-----------|--------|----------|
+| Hybrid memory manager (dual recurrent + KV) | ⬜ Not started | — |
+| Thinking control layer (--no-think) | ⬜ Not started | — |
+| Recurrent state quantization (Q8_KV) | ⬜ Not started | — |
 
 ### Phase 2: RAM Reduction
 
-| Task | Status | Date | Notes |
-|---|---|---|---|
-| 2a. Tiered KV cache + CoT eviction | TODO | — | Evict thinking tokens on </think> |
-| 2b. Quantization presets (--custom-q configs) | TODO | — | quality/balanced/lean/ultra-lean |
-| 2c. Frequency-aware expert paging (MoE) | TODO | — | Hot/cold expert split with anti-thrash |
+| Component | Status | Location |
+|-----------|--------|----------|
+| Tiered KV cache + CoT eviction | ⬜ Not started | — |
+| Quantization presets (--custom-q configs) | ⬜ Not started | `configs/presets/` (placeholder configs exist) |
+| Frequency-aware expert paging (MoE) | ⬜ Not started | — |
 
-### Phase 2b: Metal Backend
+### Phase 2b: Metal Backend (M5/A19 Optimized)
 
-| Task | Status | Date | Notes |
-|---|---|---|---|
-| Metal 4 backend skeleton | TODO | — | MTLDevice, command queue, ggml registration |
-| TensorOps + MPP GEMM dispatch | TODO | — | Neural Accelerator targeting via execution_simdgroup |
-| Cooperative tensor fusion (attn, FFN, DeltaNet) | TODO | — | Eliminate device memory round-trips |
-| Unified memory allocator (MTLBuffer heaps) | TODO | — | Zero-copy CPU↔GPU |
-| Tile size auto-tuning (tile_sweep.py) | TODO | — | Per-model-architecture, ~50 runs per sweep |
-| M5-specific quant presets (Q8 attn + Q4 FFN) | TODO | — | Hardware-aware Neural Accelerator types |
+| Component | Status | Location |
+|-----------|--------|----------|
+| Metal 4 backend skeleton (MTLDevice, ggml reg) | ⬜ Not started | — |
+| TensorOps + MPP GEMM dispatch | ⬜ Not started | — |
+| Cooperative tensor fusion (attn, FFN, DeltaNet) | ⬜ Not started | — |
+| Unified memory allocator (MTLBuffer heaps) | ⬜ Not started | — |
+| Tile size auto-tuning (tile_sweep.py) | ⬜ Not started | `scripts/tile_sweep.py` |
+| M5-specific quant presets (Q8 attn + Q4 FFN) | ⬜ Not started | — |
 
 ### Phase 3: Speed & Intelligence
 
-| Task | Status | Date | Notes |
-|---|---|---|---|
-| 3a. Reasoning-aware speculative decoding | TODO | — | Aggressive n-gram during <think> |
-| 3b. Fused DeltaNet + Attention pipeline | TODO | — | 3×DeltaNet→1×Attention block |
-| 3c. Default runtime repacking (-rtr) | TODO | — | 1.6x speedup, one-time startup cost |
-| 3d. Predictive expert prefetch | TODO | — | "Branch prediction for LLMs" |
-| 3e. Dynamic CPU/GPU operator routing | TODO | — | Threshold from profiler data |
-
-### Infrastructure
-
-| Task | Status | Date | Notes |
-|---|---|---|---|
-| Git repo initialized | DONE | 2026-03-25 | 5 commits, main branch |
-| ik_llama.cpp cloned + built (CPU/AVX2) | DONE | 2026-03-25 | Ryzen 7735U, no CUDA |
-| Test model downloaded (Qwen 2.5-0.5B Q4_K_M) | DONE | 2026-03-25 | 469 MB, baseline verified |
-| Remote repo (GitHub) | TODO | — | Push when ready |
-| CI pipeline | TODO | — | Linux + macOS builds |
+| Component | Status | Location |
+|-----------|--------|----------|
+| Reasoning-aware speculative decoding | ⬜ Not started | — |
+| Fused DeltaNet + Attention pipeline | ⬜ Not started | — |
+| Default runtime repacking (-rtr) | ⬜ Not started | — |
+| Predictive expert prefetch | ⬜ Not started | — |
+| Dynamic CPU/GPU operator routing | ⬜ Not started | — |
 
 ---
 
