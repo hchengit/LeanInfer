@@ -1,7 +1,96 @@
 # LeanInfer — Technical Assessment & Architecture Plan
 
 **Date:** 2026-03-24
-**Status:** Research complete, pre-development
+**Status:** Phase 0a complete, Phase 0b/0c + Phase 1 next
+**Last Updated:** 2026-03-26
+
+---
+
+## 0. Progress Tracker
+
+### Phase 0: Instrument & Measure
+
+| Task | Status | Date | Notes |
+|---|---|---|---|
+| 0a. Profiler library (leaninfer_profiler.h/.cpp) | DONE | 2026-03-25 | Chrome tracing JSON, zero overhead when disabled |
+| 0a. Hook points in ik_llama.cpp (3 hooks) | DONE | 2026-03-25 | llama_decode, ubatch loop, graph_compute |
+| 0a. CMake integration (-DLEANINFER_PROFILE=ON) | DONE | 2026-03-25 | Compiles into llama library |
+| 0a. Analysis script (analyze.py) | DONE | 2026-03-25 | CLI summary + Perfetto visualization confirmed |
+| 0a. Baseline captured | DONE | 2026-03-25 | Ryzen 7735U: 72.7 tok/s, 93.9% in graph_compute |
+| 0b. Per-node instrumentation in ggml.c | DONE | 2026-03-26 | 13,362 events per 16-token run, per-op-type breakdown |
+| 0b. Per-node analysis results | DONE | 2026-03-26 | See profiling results below |
+| 0b. Expert usage tracker (MoE) | TODO | — | Needs MoE model to test |
+| 0c. Benchmark harness (multi-turn, long-think) | TODO | — | Standardized reasoning benchmarks |
+
+**Phase 0b Profiling Results (Qwen 2.5-0.5B Q4_K_M, Ryzen 7735U AVX2, 8 threads):**
+
+```
+Compute time breakdown by operation type (decode, 17 tokens):
+
+  Operation        % of Compute    What It Is
+  ─────────────    ────────────    ──────────────────────────────────
+  ffn_up_gate         35.7%       Fused FFN gate+up projection (big matmul)
+  result_output       35.0%       Output head (896 → 151,936 vocab)
+  ffn_out             18.0%       FFN down projection
+  Qcur                 4.9%       Attention Q projection
+  kqv_out              3.3%       Attention output projection
+  fa                   1.8%       Flash attention
+  norms + copies       <1%        RMSNorm, K/V cache copies, embeddings
+
+  Key findings:
+  • FFN = 53.7% of all compute (up_gate + down) — primary optimization target
+  • Output head = 35.0% — disproportionately large on small vocab models
+  • Attention = ~10% — already fast thanks to ik_llama's flash attention
+  • Layers are perfectly uniform (2.5-3.2% each, no outliers)
+  • On larger models (8B+), FFN share rises to 60-70%+ as output head shrinks proportionally
+```
+
+### Phase 1: Fix Qwen 3.5
+
+| Task | Status | Date | Notes |
+|---|---|---|---|
+| 1a. Hybrid memory manager | TODO | — | Dual recurrent state + KV cache |
+| 1b. Thinking control layer (--no-think) | TODO | — | Quickest win for usability |
+| 1c. Recurrent state quantization (Q8_KV) | TODO | — | 75% memory reduction for DeltaNet state |
+
+### Phase 2: RAM Reduction
+
+| Task | Status | Date | Notes |
+|---|---|---|---|
+| 2a. Tiered KV cache + CoT eviction | TODO | — | Evict thinking tokens on </think> |
+| 2b. Quantization presets (--custom-q configs) | TODO | — | quality/balanced/lean/ultra-lean |
+| 2c. Frequency-aware expert paging (MoE) | TODO | — | Hot/cold expert split with anti-thrash |
+
+### Phase 2b: Metal Backend
+
+| Task | Status | Date | Notes |
+|---|---|---|---|
+| Metal 4 backend skeleton | TODO | — | MTLDevice, command queue, ggml registration |
+| TensorOps + MPP GEMM dispatch | TODO | — | Neural Accelerator targeting via execution_simdgroup |
+| Cooperative tensor fusion (attn, FFN, DeltaNet) | TODO | — | Eliminate device memory round-trips |
+| Unified memory allocator (MTLBuffer heaps) | TODO | — | Zero-copy CPU↔GPU |
+| Tile size auto-tuning (tile_sweep.py) | TODO | — | Per-model-architecture, ~50 runs per sweep |
+| M5-specific quant presets (Q8 attn + Q4 FFN) | TODO | — | Hardware-aware Neural Accelerator types |
+
+### Phase 3: Speed & Intelligence
+
+| Task | Status | Date | Notes |
+|---|---|---|---|
+| 3a. Reasoning-aware speculative decoding | TODO | — | Aggressive n-gram during <think> |
+| 3b. Fused DeltaNet + Attention pipeline | TODO | — | 3×DeltaNet→1×Attention block |
+| 3c. Default runtime repacking (-rtr) | TODO | — | 1.6x speedup, one-time startup cost |
+| 3d. Predictive expert prefetch | TODO | — | "Branch prediction for LLMs" |
+| 3e. Dynamic CPU/GPU operator routing | TODO | — | Threshold from profiler data |
+
+### Infrastructure
+
+| Task | Status | Date | Notes |
+|---|---|---|---|
+| Git repo initialized | DONE | 2026-03-25 | 5 commits, main branch |
+| ik_llama.cpp cloned + built (CPU/AVX2) | DONE | 2026-03-25 | Ryzen 7735U, no CUDA |
+| Test model downloaded (Qwen 2.5-0.5B Q4_K_M) | DONE | 2026-03-25 | 469 MB, baseline verified |
+| Remote repo (GitHub) | TODO | — | Push when ready |
+| CI pipeline | TODO | — | Linux + macOS builds |
 
 ---
 
