@@ -179,7 +179,7 @@ Key Findings — What The Data Proves:
 | Component | Status | Location |
 |-----------|--------|----------|
 | Tiered KV cache + CoT eviction | ⬜ Not started | — |
-| Quantization presets (--custom-q configs) | ⬜ Not started | `configs/presets/` (placeholder configs exist) |
+| Quantization presets (7 model configs + 3 sampling) | ✅ Working | `configs/presets/` (quality/balanced/lean/ultra-lean) + `configs/sampling/` + `scripts/quantize.sh` |
 | Frequency-aware expert paging (MoE) | ⬜ Not started | — |
 
 ### Phase 2b: Metal Backend (M5/A19 Optimized)
