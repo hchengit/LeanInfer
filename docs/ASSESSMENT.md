@@ -178,7 +178,7 @@ Key Findings — What The Data Proves:
 
 | Component | Status | Location |
 |-----------|--------|----------|
-| Tiered KV cache + CoT eviction | ⬜ Not started | — |
+| Tiered KV cache + CoT eviction | ✅ Implemented | `examples/server/server-context.cpp` (release_slots hook) — evicts thinking tokens from cache_tokens on slot release |
 | Quantization presets (7 model configs + 3 sampling) | ✅ Working | `configs/presets/` (quality/balanced/lean/ultra-lean) + `configs/sampling/` + `scripts/quantize.sh` |
 | Frequency-aware expert paging (MoE) | ⬜ Not started | — |
 
