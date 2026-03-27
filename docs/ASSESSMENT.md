@@ -189,16 +189,16 @@ Key Findings — What The Data Proves:
 
 ### Phase 2b: Metal Backend (M5/A19 Optimized)
 
-> **Skipped** — Linux/CPU-only development environment. No Apple Silicon hardware available. Resume when targeting macOS.
+> **Deferred** — M2 MacBook available; resume when switching to macOS dev environment.
 
 | Component | Status | Location |
 |-----------|--------|----------|
-| Metal 4 backend skeleton (MTLDevice, ggml reg) | ⏭ Skipped | Mac-only |
-| TensorOps + MPP GEMM dispatch | ⏭ Skipped | Mac-only |
-| Cooperative tensor fusion (attn, FFN, DeltaNet) | ⏭ Skipped | Mac-only |
-| Unified memory allocator (MTLBuffer heaps) | ⏭ Skipped | Mac-only |
-| Tile size auto-tuning (tile_sweep.py) | ⏭ Skipped | Mac-only |
-| M5-specific quant presets (Q8 attn + Q4 FFN) | ⏭ Skipped | Mac-only |
+| Metal 4 backend skeleton (MTLDevice, ggml reg) | 🔜 Deferred | M2 Mac |
+| TensorOps + MPP GEMM dispatch | 🔜 Deferred | M2 Mac |
+| Cooperative tensor fusion (attn, FFN, DeltaNet) | 🔜 Deferred | M2 Mac |
+| Unified memory allocator (MTLBuffer heaps) | 🔜 Deferred | M2 Mac |
+| Tile size auto-tuning (tile_sweep.py) | 🔜 Deferred | M2 Mac |
+| M5-specific quant presets (Q8 attn + Q4 FFN) | 🔜 Deferred | M2 Mac |
 
 ### Phase 3: Speed & Intelligence
 
