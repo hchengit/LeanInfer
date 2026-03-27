@@ -1,8 +1,8 @@
 # LeanInfer — Technical Assessment & Architecture Plan
 
 **Date:** 2026-03-24
-**Status:** Phase 0a complete, Phase 0b/0c + Phase 1 next
-**Last Updated:** 2026-03-26
+**Status:** Phase 2c complete, Phase 2b skipped (Mac-only), Phase 3 next
+**Last Updated:** 2026-03-27
 
 ---
 
@@ -183,18 +183,22 @@ Key Findings — What The Data Proves:
 | OLMoE arch support (ik_llama.cpp) | ✅ Working | 8 files patched: `llama-arch.h/cpp`, `llama-model.cpp`, `llama-hparams.cpp`, `llama-load-tensors.cpp`, `llama-build-context.h/cpp`, `llama.cpp` — 43 t/s on Ryzen 7735U |
 | Expert frequency profiler | ✅ Working | `profiles/profiler.py` — GGUF router weight analysis, hot/warm/cold classification (20/30/50%), outputs `olmoe_expert_profile.json` |
 | Expert co-activation matrix | ✅ Working | `profiles/coactivation.py` — cosine similarity of router weights, expert group finder, outputs `olmoe_coactivation.json` |
-| Frequency-aware expert paging (runtime) | ⬜ Next | Wire hot/warm/cold profile into ik_llama.cpp expert placement (`-ot exps=CPU` integration) |
+| Runtime expert activation logger | ✅ Working | `--expert-log` flag; eval callback reads `ffn_moe_topk` inline per token; 4186 records across 16 layers collected |
+| Placement policy generator | ✅ Working | `profiles/policy.py` — blends 70% runtime + 30% weight signal; outputs `profiles/policy.json` |
+| Frequency-aware expert paging (madvise) | ✅ Working | `llama_apply_expert_policy()` + `--policy-file`; WILLNEED on 208 hot + DONTNEED on 512 cold experts; 2160 madvise calls on mmap'd tensor regions |
 
 ### Phase 2b: Metal Backend (M5/A19 Optimized)
 
+> **Skipped** — Linux/CPU-only development environment. No Apple Silicon hardware available. Resume when targeting macOS.
+
 | Component | Status | Location |
 |-----------|--------|----------|
-| Metal 4 backend skeleton (MTLDevice, ggml reg) | ⬜ Not started | — |
-| TensorOps + MPP GEMM dispatch | ⬜ Not started | — |
-| Cooperative tensor fusion (attn, FFN, DeltaNet) | ⬜ Not started | — |
-| Unified memory allocator (MTLBuffer heaps) | ⬜ Not started | — |
-| Tile size auto-tuning (tile_sweep.py) | ⬜ Not started | `scripts/tile_sweep.py` |
-| M5-specific quant presets (Q8 attn + Q4 FFN) | ⬜ Not started | — |
+| Metal 4 backend skeleton (MTLDevice, ggml reg) | ⏭ Skipped | Mac-only |
+| TensorOps + MPP GEMM dispatch | ⏭ Skipped | Mac-only |
+| Cooperative tensor fusion (attn, FFN, DeltaNet) | ⏭ Skipped | Mac-only |
+| Unified memory allocator (MTLBuffer heaps) | ⏭ Skipped | Mac-only |
+| Tile size auto-tuning (tile_sweep.py) | ⏭ Skipped | Mac-only |
+| M5-specific quant presets (Q8 attn + Q4 FFN) | ⏭ Skipped | Mac-only |
 
 ### Phase 3: Speed & Intelligence
 
