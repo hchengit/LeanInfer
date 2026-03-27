@@ -1,0 +1,4490 @@
+{
+  "n_layers": 16,
+  "n_experts": 64,
+  "weight_coactivation": {
+    "0": {
+      "matrix_shape": [
+        64,
+        64
+      ],
+      "top_pairs": [
+        {
+          "score": 0.929,
+          "expert_a": 7,
+          "expert_b": 43
+        },
+        {
+          "score": 0.8498,
+          "expert_a": 7,
+          "expert_b": 39
+        },
+        {
+          "score": 0.8493,
+          "expert_a": 39,
+          "expert_b": 43
+        },
+        {
+          "score": 0.7927,
+          "expert_a": 40,
+          "expert_b": 53
+        },
+        {
+          "score": 0.788,
+          "expert_a": 23,
+          "expert_b": 63
+        },
+        {
+          "score": 0.7724,
+          "expert_a": 13,
+          "expert_b": 53
+        },
+        {
+          "score": 0.7328,
+          "expert_a": 39,
+          "expert_b": 63
+        },
+        {
+          "score": 0.7272,
+          "expert_a": 12,
+          "expert_b": 58
+        },
+        {
+          "score": 0.7245,
+          "expert_a": 22,
+          "expert_b": 57
+        },
+        {
+          "score": 0.7163,
+          "expert_a": 5,
+          "expert_b": 18
+        },
+        {
+          "score": 0.7072,
+          "expert_a": 24,
+          "expert_b": 60
+        },
+        {
+          "score": 0.6956,
+          "expert_a": 0,
+          "expert_b": 34
+        },
+        {
+          "score": 0.6943,
+          "expert_a": 8,
+          "expert_b": 63
+        },
+        {
+          "score": 0.6942,
+          "expert_a": 13,
+          "expert_b": 18
+        },
+        {
+          "score": 0.6915,
+          "expert_a": 9,
+          "expert_b": 58
+        },
+        {
+          "score": 0.6833,
+          "expert_a": 20,
+          "expert_b": 40
+        },
+        {
+          "score": 0.6814,
+          "expert_a": 8,
+          "expert_b": 13
+        },
+        {
+          "score": 0.6797,
+          "expert_a": 24,
+          "expert_b": 63
+        },
+        {
+          "score": 0.6781,
+          "expert_a": 13,
+          "expert_b": 40
+        },
+        {
+          "score": 0.6763,
+          "expert_a": 8,
+          "expert_b": 53
+        }
+      ]
+    },
+    "1": {
+      "matrix_shape": [
+        64,
+        64
+      ],
+      "top_pairs": [
+        {
+          "score": 0.7066,
+          "expert_a": 14,
+          "expert_b": 54
+        },
+        {
+          "score": 0.6734,
+          "expert_a": 10,
+          "expert_b": 43
+        },
+        {
+          "score": 0.6729,
+          "expert_a": 6,
+          "expert_b": 10
+        },
+        {
+          "score": 0.6727,
+          "expert_a": 14,
+          "expert_b": 40
+        },
+        {
+          "score": 0.6686,
+          "expert_a": 3,
+          "expert_b": 23
+        },
+        {
+          "score": 0.6681,
+          "expert_a": 15,
+          "expert_b": 25
+        },
+        {
+          "score": 0.6567,
+          "expert_a": 25,
+          "expert_b": 47
+        },
+        {
+          "score": 0.6547,
+          "expert_a": 40,
+          "expert_b": 49
+        },
+        {
+          "score": 0.6536,
+          "expert_a": 40,
+          "expert_b": 59
+        },
+        {
+          "score": 0.6519,
+          "expert_a": 5,
+          "expert_b": 37
+        },
+        {
+          "score": 0.6515,
+          "expert_a": 43,
+          "expert_b": 56
+        },
+        {
+          "score": 0.6502,
+          "expert_a": 12,
+          "expert_b": 40
+        },
+        {
+          "score": 0.6477,
+          "expert_a": 60,
+          "expert_b": 63
+        },
+        {
+          "score": 0.647,
+          "expert_a": 33,
+          "expert_b": 43
+        },
+        {
+          "score": 0.6463,
+          "expert_a": 14,
+          "expert_b": 32
+        },
+        {
+          "score": 0.6455,
+          "expert_a": 37,
+          "expert_b": 53
+        },
+        {
+          "score": 0.6441,
+          "expert_a": 32,
+          "expert_b": 40
+        },
+        {
+          "score": 0.6391,
+          "expert_a": 32,
+          "expert_b": 49
+        },
+        {
+          "score": 0.6381,
+          "expert_a": 10,
+          "expert_b": 33
+        },
+        {
+          "score": 0.6372,
+          "expert_a": 26,
+          "expert_b": 56
+        }
+      ]
+    },
+    "2": {
+      "matrix_shape": [
+        64,
+        64
+      ],
+      "top_pairs": [
+        {
+          "score": 0.829,
+          "expert_a": 5,
+          "expert_b": 40
+        },
+        {
+          "score": 0.7715,
+          "expert_a": 37,
+          "expert_b": 56
+        },
+        {
+          "score": 0.7568,
+          "expert_a": 51,
+          "expert_b": 55
+        },
+        {
+          "score": 0.7442,
+          "expert_a": 2,
+          "expert_b": 43
+        },
+        {
+          "score": 0.7337,
+          "expert_a": 46,
+          "expert_b": 63
+        },
+        {
+          "score": 0.723,
+          "expert_a": 19,
+          "expert_b": 26
+        },
+        {
+          "score": 0.707,
+          "expert_a": 14,
+          "expert_b": 60
+        },
+        {
+          "score": 0.7019,
+          "expert_a": 2,
+          "expert_b": 31
+        },
+        {
+          "score": 0.6814,
+          "expert_a": 31,
+          "expert_b": 49
+        },
+        {
+          "score": 0.6765,
+          "expert_a": 2,
+          "expert_b": 42
+        },
+        {
+          "score": 0.6751,
+          "expert_a": 7,
+          "expert_b": 10
+        },
+        {
+          "score": 0.6747,
+          "expert_a": 0,
+          "expert_b": 23
+        },
+        {
+          "score": 0.6738,
+          "expert_a": 24,
+          "expert_b": 30
+        },
+        {
+          "score": 0.6732,
+          "expert_a": 14,
+          "expert_b": 22
+        },
+        {
+          "score": 0.673,
+          "expert_a": 17,
+          "expert_b": 42
+        },
+        {
+          "score": 0.6711,
+          "expert_a": 54,
+          "expert_b": 56
+        },
+        {
+          "score": 0.6705,
+          "expert_a": 42,
+          "expert_b": 61
+        },
+        {
+          "score": 0.6678,
+          "expert_a": 2,
+          "expert_b": 49
+        },
+        {
+          "score": 0.6658,
+          "expert_a": 48,
+          "expert_b": 54
+        },
+        {
+          "score": 0.6618,
+          "expert_a": 20,
+          "expert_b": 57
+        }
+      ]
+    },
+    "3": {
+      "matrix_shape": [
+        64,
+        64
+      ],
+      "top_pairs": [
+        {
+          "score": 0.9318,
+          "expert_a": 14,
+          "expert_b": 55
+        },
+        {
+          "score": 0.8103,
+          "expert_a": 17,
+          "expert_b": 60
+        },
+        {
+          "score": 0.8041,
+          "expert_a": 30,
+          "expert_b": 54
+        },
+        {
+          "score": 0.7898,
+          "expert_a": 40,
+          "expert_b": 49
+        },
+        {
+          "score": 0.7896,
+          "expert_a": 5,
+          "expert_b": 53
+        },
+        {
+          "score": 0.7879,
+          "expert_a": 33,
+          "expert_b": 59
+        },
+        {
+          "score": 0.7811,
+          "expert_a": 17,
+          "expert_b": 53
+        },
+        {
+          "score": 0.7782,
+          "expert_a": 18,
+          "expert_b": 28
+        },
+        {
+          "score": 0.7703,
+          "expert_a": 36,
+          "expert_b": 44
+        },
+        {
+          "score": 0.7657,
+          "expert_a": 16,
+          "expert_b": 17
+        },
+        {
+          "score": 0.764,
+          "expert_a": 12,
+          "expert_b": 30
+        },
+        {
+          "score": 0.7639,
+          "expert_a": 18,
+          "expert_b": 49
+        },
+        {
+          "score": 0.7567,
+          "expert_a": 17,
+          "expert_b": 29
+        },
+        {
+          "score": 0.7526,
+          "expert_a": 5,
+          "expert_b": 17
+        },
+        {
+          "score": 0.7525,
+          "expert_a": 13,
+          "expert_b": 53
+        },
+        {
+          "score": 0.7514,
+          "expert_a": 18,
+          "expert_b": 46
+        },
+        {
+          "score": 0.7468,
+          "expert_a": 37,
+          "expert_b": 54
+        },
+        {
+          "score": 0.7433,
+          "expert_a": 39,
+          "expert_b": 43
+        },
+        {
+          "score": 0.7432,
+          "expert_a": 17,
+          "expert_b": 24
+        },
+        {
+          "score": 0.74,
+          "expert_a": 57,
+          "expert_b": 59
+        }
+      ]
+    },
+    "4": {
+      "matrix_shape": [
+        64,
+        64
+      ],
+      "top_pairs": [
+        {
+          "score": 0.9252,
+          "expert_a": 42,
+          "expert_b": 59
+        },
+        {
+          "score": 0.8503,
+          "expert_a": 23,
+          "expert_b": 59
+        },
+        {
+          "score": 0.8162,
+          "expert_a": 12,
+          "expert_b": 28
+        },
+        {
+          "score": 0.814,
+          "expert_a": 12,
+          "expert_b": 32
+        },
+        {
+          "score": 0.8118,
+          "expert_a": 38,
+          "expert_b": 60
+        },
+        {
+          "score": 0.8082,
+          "expert_a": 28,
+          "expert_b": 32
+        },
+        {
+          "score": 0.805,
+          "expert_a": 19,
+          "expert_b": 55
+        },
+        {
+          "score": 0.8008,
+          "expert_a": 13,
+          "expert_b": 60
+        },
+        {
+          "score": 0.7956,
+          "expert_a": 23,
+          "expert_b": 42
+        },
+        {
+          "score": 0.7755,
+          "expert_a": 15,
+          "expert_b": 32
+        },
+        {
+          "score": 0.7747,
+          "expert_a": 4,
+          "expert_b": 15
+        },
+        {
+          "score": 0.7717,
+          "expert_a": 22,
+          "expert_b": 52
+        },
+        {
+          "score": 0.7687,
+          "expert_a": 15,
+          "expert_b": 28
+        },
+        {
+          "score": 0.7687,
+          "expert_a": 6,
+          "expert_b": 25
+        },
+        {
+          "score": 0.7681,
+          "expert_a": 15,
+          "expert_b": 16
+        },
+        {
+          "score": 0.7664,
+          "expert_a": 16,
+          "expert_b": 32
+        },
+        {
+          "score": 0.7559,
+          "expert_a": 12,
+          "expert_b": 16
+        },
+        {
+          "score": 0.7507,
+          "expert_a": 28,
+          "expert_b": 37
+        },
+        {
+          "score": 0.75,
+          "expert_a": 13,
+          "expert_b": 36
+        },
+        {
+          "score": 0.7491,
+          "expert_a": 16,
+          "expert_b": 28
+        }
+      ]
+    },
+    "5": {
+      "matrix_shape": [
+        64,
+        64
+      ],
+      "top_pairs": [
+        {
+          "score": 0.9207,
+          "expert_a": 52,
+          "expert_b": 58
+        },
+        {
+          "score": 0.9158,
+          "expert_a": 22,
+          "expert_b": 30
+        },
+        {
+          "score": 0.9089,
+          "expert_a": 30,
+          "expert_b": 58
+        },
+        {
+          "score": 0.8891,
+          "expert_a": 30,
+          "expert_b": 52
+        },
+        {
+          "score": 0.8874,
+          "expert_a": 2,
+          "expert_b": 42
+        },
+        {
+          "score": 0.8777,
+          "expert_a": 22,
+          "expert_b": 52
+        },
+        {
+          "score": 0.8743,
+          "expert_a": 22,
+          "expert_b": 58
+        },
+        {
+          "score": 0.8409,
+          "expert_a": 6,
+          "expert_b": 43
+        },
+        {
+          "score": 0.7905,
+          "expert_a": 0,
+          "expert_b": 42
+        },
+        {
+          "score": 0.7846,
+          "expert_a": 7,
+          "expert_b": 24
+        },
+        {
+          "score": 0.773,
+          "expert_a": 28,
+          "expert_b": 43
+        },
+        {
+          "score": 0.7669,
+          "expert_a": 25,
+          "expert_b": 38
+        },
+        {
+          "score": 0.7622,
+          "expert_a": 18,
+          "expert_b": 45
+        },
+        {
+          "score": 0.7607,
+          "expert_a": 7,
+          "expert_b": 12
+        },
+        {
+          "score": 0.7583,
+          "expert_a": 10,
+          "expert_b": 19
+        },
+        {
+          "score": 0.7573,
+          "expert_a": 1,
+          "expert_b": 7
+        },
+        {
+          "score": 0.7548,
+          "expert_a": 18,
+          "expert_b": 36
+        },
+        {
+          "score": 0.7442,
+          "expert_a": 37,
+          "expert_b": 59
+        },
+        {
+          "score": 0.7414,
+          "expert_a": 4,
+          "expert_b": 12
+        },
+        {
+          "score": 0.7413,
+          "expert_a": 56,
+          "expert_b": 59
+        }
+      ]
+    },
+    "6": {
+      "matrix_shape": [
+        64,
+        64
+      ],
+      "top_pairs": [
+        {
+          "score": 0.9399,
+          "expert_a": 55,
+          "expert_b": 62
+        },
+        {
+          "score": 0.933,
+          "expert_a": 25,
+          "expert_b": 55
+        },
+        {
+          "score": 0.8996,
+          "expert_a": 25,
+          "expert_b": 62
+        },
+        {
+          "score": 0.8458,
+          "expert_a": 47,
+          "expert_b": 48
+        },
+        {
+          "score": 0.8312,
+          "expert_a": 56,
+          "expert_b": 60
+        },
+        {
+          "score": 0.8152,
+          "expert_a": 42,
+          "expert_b": 52
+        },
+        {
+          "score": 0.8129,
+          "expert_a": 4,
+          "expert_b": 26
+        },
+        {
+          "score": 0.8046,
+          "expert_a": 49,
+          "expert_b": 59
+        },
+        {
+          "score": 0.7997,
+          "expert_a": 40,
+          "expert_b": 59
+        },
+        {
+          "score": 0.7954,
+          "expert_a": 12,
+          "expert_b": 14
+        },
+        {
+          "score": 0.7937,
+          "expert_a": 39,
+          "expert_b": 44
+        },
+        {
+          "score": 0.7891,
+          "expert_a": 29,
+          "expert_b": 48
+        },
+        {
+          "score": 0.7865,
+          "expert_a": 6,
+          "expert_b": 12
+        },
+        {
+          "score": 0.777,
+          "expert_a": 59,
+          "expert_b": 62
+        },
+        {
+          "score": 0.7765,
+          "expert_a": 44,
+          "expert_b": 48
+        },
+        {
+          "score": 0.7748,
+          "expert_a": 40,
+          "expert_b": 49
+        },
+        {
+          "score": 0.7709,
+          "expert_a": 25,
+          "expert_b": 51
+        },
+        {
+          "score": 0.7652,
+          "expert_a": 12,
+          "expert_b": 46
+        },
+        {
+          "score": 0.7645,
+          "expert_a": 12,
+          "expert_b": 51
+        },
+        {
+          "score": 0.7633,
+          "expert_a": 39,
+          "expert_b": 48
+        }
+      ]
+    },
+    "7": {
+      "matrix_shape": [
+        64,
+        64
+      ],
+      "top_pairs": [
+        {
+          "score": 0.9925,
+          "expert_a": 23,
+          "expert_b": 48
+        },
+        {
+          "score": 0.9853,
+          "expert_a": 48,
+          "expert_b": 56
+        },
+        {
+          "score": 0.9842,
+          "expert_a": 23,
+          "expert_b": 56
+        },
+        {
+          "score": 0.974,
+          "expert_a": 41,
+          "expert_b": 48
+        },
+        {
+          "score": 0.9699,
+          "expert_a": 23,
+          "expert_b": 41
+        },
+        {
+          "score": 0.9676,
+          "expert_a": 41,
+          "expert_b": 56
+        },
+        {
+          "score": 0.9638,
+          "expert_a": 5,
+          "expert_b": 46
+        },
+        {
+          "score": 0.8948,
+          "expert_a": 19,
+          "expert_b": 52
+        },
+        {
+          "score": 0.8672,
+          "expert_a": 39,
+          "expert_b": 45
+        },
+        {
+          "score": 0.8648,
+          "expert_a": 26,
+          "expert_b": 46
+        },
+        {
+          "score": 0.8295,
+          "expert_a": 50,
+          "expert_b": 51
+        },
+        {
+          "score": 0.8238,
+          "expert_a": 42,
+          "expert_b": 49
+        },
+        {
+          "score": 0.8235,
+          "expert_a": 5,
+          "expert_b": 26
+        },
+        {
+          "score": 0.8228,
+          "expert_a": 4,
+          "expert_b": 17
+        },
+        {
+          "score": 0.8215,
+          "expert_a": 35,
+          "expert_b": 45
+        },
+        {
+          "score": 0.8136,
+          "expert_a": 46,
+          "expert_b": 59
+        },
+        {
+          "score": 0.8067,
+          "expert_a": 6,
+          "expert_b": 15
+        },
+        {
+          "score": 0.806,
+          "expert_a": 26,
+          "expert_b": 59
+        },
+        {
+          "score": 0.8031,
+          "expert_a": 35,
+          "expert_b": 39
+        },
+        {
+          "score": 0.8028,
+          "expert_a": 6,
+          "expert_b": 8
+        }
+      ]
+    },
+    "8": {
+      "matrix_shape": [
+        64,
+        64
+      ],
+      "top_pairs": [
+        {
+          "score": 0.9702,
+          "expert_a": 10,
+          "expert_b": 35
+        },
+        {
+          "score": 0.9443,
+          "expert_a": 10,
+          "expert_b": 50
+        },
+        {
+          "score": 0.9372,
+          "expert_a": 55,
+          "expert_b": 63
+        },
+        {
+          "score": 0.9325,
+          "expert_a": 37,
+          "expert_b": 45
+        },
+        {
+          "score": 0.9301,
+          "expert_a": 1,
+          "expert_b": 35
+        },
+        {
+          "score": 0.922,
+          "expert_a": 35,
+          "expert_b": 50
+        },
+        {
+          "score": 0.9215,
+          "expert_a": 57,
+          "expert_b": 63
+        },
+        {
+          "score": 0.9187,
+          "expert_a": 12,
+          "expert_b": 55
+        },
+        {
+          "score": 0.9182,
+          "expert_a": 17,
+          "expert_b": 28
+        },
+        {
+          "score": 0.9082,
+          "expert_a": 55,
+          "expert_b": 57
+        },
+        {
+          "score": 0.9065,
+          "expert_a": 10,
+          "expert_b": 21
+        },
+        {
+          "score": 0.9053,
+          "expert_a": 1,
+          "expert_b": 29
+        },
+        {
+          "score": 0.8934,
+          "expert_a": 12,
+          "expert_b": 63
+        },
+        {
+          "score": 0.8906,
+          "expert_a": 21,
+          "expert_b": 30
+        },
+        {
+          "score": 0.887,
+          "expert_a": 21,
+          "expert_b": 35
+        },
+        {
+          "score": 0.8798,
+          "expert_a": 21,
+          "expert_b": 50
+        },
+        {
+          "score": 0.8793,
+          "expert_a": 1,
+          "expert_b": 10
+        },
+        {
+          "score": 0.8758,
+          "expert_a": 10,
+          "expert_b": 30
+        },
+        {
+          "score": 0.8687,
+          "expert_a": 34,
+          "expert_b": 36
+        },
+        {
+          "score": 0.8607,
+          "expert_a": 30,
+          "expert_b": 35
+        }
+      ]
+    },
+    "9": {
+      "matrix_shape": [
+        64,
+        64
+      ],
+      "top_pairs": [
+        {
+          "score": 0.9707,
+          "expert_a": 13,
+          "expert_b": 21
+        },
+        {
+          "score": 0.9571,
+          "expert_a": 13,
+          "expert_b": 16
+        },
+        {
+          "score": 0.9524,
+          "expert_a": 16,
+          "expert_b": 21
+        },
+        {
+          "score": 0.9522,
+          "expert_a": 29,
+          "expert_b": 59
+        },
+        {
+          "score": 0.9368,
+          "expert_a": 53,
+          "expert_b": 59
+        },
+        {
+          "score": 0.9315,
+          "expert_a": 13,
+          "expert_b": 42
+        },
+        {
+          "score": 0.9258,
+          "expert_a": 32,
+          "expert_b": 53
+        },
+        {
+          "score": 0.9257,
+          "expert_a": 0,
+          "expert_b": 37
+        },
+        {
+          "score": 0.913,
+          "expert_a": 37,
+          "expert_b": 55
+        },
+        {
+          "score": 0.9092,
+          "expert_a": 0,
+          "expert_b": 55
+        },
+        {
+          "score": 0.9077,
+          "expert_a": 23,
+          "expert_b": 45
+        },
+        {
+          "score": 0.902,
+          "expert_a": 16,
+          "expert_b": 42
+        },
+        {
+          "score": 0.8965,
+          "expert_a": 32,
+          "expert_b": 59
+        },
+        {
+          "score": 0.8952,
+          "expert_a": 25,
+          "expert_b": 56
+        },
+        {
+          "score": 0.8949,
+          "expert_a": 29,
+          "expert_b": 53
+        },
+        {
+          "score": 0.8924,
+          "expert_a": 16,
+          "expert_b": 23
+        },
+        {
+          "score": 0.8886,
+          "expert_a": 21,
+          "expert_b": 23
+        },
+        {
+          "score": 0.8845,
+          "expert_a": 21,
+          "expert_b": 42
+        },
+        {
+          "score": 0.872,
+          "expert_a": 2,
+          "expert_b": 55
+        },
+        {
+          "score": 0.8653,
+          "expert_a": 29,
+          "expert_b": 32
+        }
+      ]
+    },
+    "10": {
+      "matrix_shape": [
+        64,
+        64
+      ],
+      "top_pairs": [
+        {
+          "score": 0.9736,
+          "expert_a": 47,
+          "expert_b": 53
+        },
+        {
+          "score": 0.9716,
+          "expert_a": 17,
+          "expert_b": 37
+        },
+        {
+          "score": 0.9586,
+          "expert_a": 30,
+          "expert_b": 38
+        },
+        {
+          "score": 0.9585,
+          "expert_a": 0,
+          "expert_b": 53
+        },
+        {
+          "score": 0.9564,
+          "expert_a": 32,
+          "expert_b": 37
+        },
+        {
+          "score": 0.9403,
+          "expert_a": 0,
+          "expert_b": 47
+        },
+        {
+          "score": 0.9158,
+          "expert_a": 1,
+          "expert_b": 36
+        },
+        {
+          "score": 0.9087,
+          "expert_a": 32,
+          "expert_b": 52
+        },
+        {
+          "score": 0.9068,
+          "expert_a": 17,
+          "expert_b": 32
+        },
+        {
+          "score": 0.9067,
+          "expert_a": 6,
+          "expert_b": 30
+        },
+        {
+          "score": 0.9038,
+          "expert_a": 33,
+          "expert_b": 51
+        },
+        {
+          "score": 0.8994,
+          "expert_a": 1,
+          "expert_b": 14
+        },
+        {
+          "score": 0.8976,
+          "expert_a": 27,
+          "expert_b": 51
+        },
+        {
+          "score": 0.8928,
+          "expert_a": 10,
+          "expert_b": 51
+        },
+        {
+          "score": 0.8913,
+          "expert_a": 39,
+          "expert_b": 53
+        },
+        {
+          "score": 0.8861,
+          "expert_a": 39,
+          "expert_b": 47
+        },
+        {
+          "score": 0.8833,
+          "expert_a": 14,
+          "expert_b": 36
+        },
+        {
+          "score": 0.8809,
+          "expert_a": 12,
+          "expert_b": 38
+        },
+        {
+          "score": 0.8784,
+          "expert_a": 6,
+          "expert_b": 38
+        },
+        {
+          "score": 0.8781,
+          "expert_a": 12,
+          "expert_b": 30
+        }
+      ]
+    },
+    "11": {
+      "matrix_shape": [
+        64,
+        64
+      ],
+      "top_pairs": [
+        {
+          "score": 0.9905,
+          "expert_a": 8,
+          "expert_b": 31
+        },
+        {
+          "score": 0.9548,
+          "expert_a": 0,
+          "expert_b": 61
+        },
+        {
+          "score": 0.9139,
+          "expert_a": 21,
+          "expert_b": 60
+        },
+        {
+          "score": 0.9061,
+          "expert_a": 13,
+          "expert_b": 27
+        },
+        {
+          "score": 0.9021,
+          "expert_a": 19,
+          "expert_b": 36
+        },
+        {
+          "score": 0.9011,
+          "expert_a": 34,
+          "expert_b": 58
+        },
+        {
+          "score": 0.8966,
+          "expert_a": 22,
+          "expert_b": 52
+        },
+        {
+          "score": 0.8926,
+          "expert_a": 30,
+          "expert_b": 36
+        },
+        {
+          "score": 0.877,
+          "expert_a": 22,
+          "expert_b": 56
+        },
+        {
+          "score": 0.8763,
+          "expert_a": 33,
+          "expert_b": 56
+        },
+        {
+          "score": 0.876,
+          "expert_a": 15,
+          "expert_b": 58
+        },
+        {
+          "score": 0.8701,
+          "expert_a": 33,
+          "expert_b": 37
+        },
+        {
+          "score": 0.8672,
+          "expert_a": 15,
+          "expert_b": 18
+        },
+        {
+          "score": 0.8658,
+          "expert_a": 22,
+          "expert_b": 33
+        },
+        {
+          "score": 0.865,
+          "expert_a": 0,
+          "expert_b": 11
+        },
+        {
+          "score": 0.8648,
+          "expert_a": 21,
+          "expert_b": 36
+        },
+        {
+          "score": 0.8566,
+          "expert_a": 11,
+          "expert_b": 61
+        },
+        {
+          "score": 0.8542,
+          "expert_a": 13,
+          "expert_b": 63
+        },
+        {
+          "score": 0.849,
+          "expert_a": 37,
+          "expert_b": 51
+        },
+        {
+          "score": 0.8409,
+          "expert_a": 15,
+          "expert_b": 34
+        }
+      ]
+    },
+    "12": {
+      "matrix_shape": [
+        64,
+        64
+      ],
+      "top_pairs": [
+        {
+          "score": 0.9662,
+          "expert_a": 7,
+          "expert_b": 21
+        },
+        {
+          "score": 0.9415,
+          "expert_a": 6,
+          "expert_b": 54
+        },
+        {
+          "score": 0.931,
+          "expert_a": 14,
+          "expert_b": 46
+        },
+        {
+          "score": 0.9076,
+          "expert_a": 14,
+          "expert_b": 52
+        },
+        {
+          "score": 0.9039,
+          "expert_a": 54,
+          "expert_b": 59
+        },
+        {
+          "score": 0.895,
+          "expert_a": 54,
+          "expert_b": 58
+        },
+        {
+          "score": 0.8915,
+          "expert_a": 16,
+          "expert_b": 49
+        },
+        {
+          "score": 0.889,
+          "expert_a": 9,
+          "expert_b": 15
+        },
+        {
+          "score": 0.8888,
+          "expert_a": 34,
+          "expert_b": 49
+        },
+        {
+          "score": 0.8791,
+          "expert_a": 58,
+          "expert_b": 59
+        },
+        {
+          "score": 0.8777,
+          "expert_a": 16,
+          "expert_b": 61
+        },
+        {
+          "score": 0.8735,
+          "expert_a": 50,
+          "expert_b": 52
+        },
+        {
+          "score": 0.8725,
+          "expert_a": 6,
+          "expert_b": 9
+        },
+        {
+          "score": 0.8673,
+          "expert_a": 6,
+          "expert_b": 58
+        },
+        {
+          "score": 0.8648,
+          "expert_a": 4,
+          "expert_b": 34
+        },
+        {
+          "score": 0.8642,
+          "expert_a": 1,
+          "expert_b": 34
+        },
+        {
+          "score": 0.8573,
+          "expert_a": 6,
+          "expert_b": 59
+        },
+        {
+          "score": 0.8554,
+          "expert_a": 46,
+          "expert_b": 52
+        },
+        {
+          "score": 0.8537,
+          "expert_a": 14,
+          "expert_b": 50
+        },
+        {
+          "score": 0.8518,
+          "expert_a": 48,
+          "expert_b": 50
+        }
+      ]
+    },
+    "13": {
+      "matrix_shape": [
+        64,
+        64
+      ],
+      "top_pairs": [
+        {
+          "score": 0.9846,
+          "expert_a": 8,
+          "expert_b": 41
+        },
+        {
+          "score": 0.9767,
+          "expert_a": 37,
+          "expert_b": 58
+        },
+        {
+          "score": 0.9653,
+          "expert_a": 33,
+          "expert_b": 37
+        },
+        {
+          "score": 0.9524,
+          "expert_a": 30,
+          "expert_b": 33
+        },
+        {
+          "score": 0.9438,
+          "expert_a": 33,
+          "expert_b": 58
+        },
+        {
+          "score": 0.9413,
+          "expert_a": 12,
+          "expert_b": 30
+        },
+        {
+          "score": 0.9388,
+          "expert_a": 12,
+          "expert_b": 33
+        },
+        {
+          "score": 0.9384,
+          "expert_a": 18,
+          "expert_b": 28
+        },
+        {
+          "score": 0.9339,
+          "expert_a": 30,
+          "expert_b": 58
+        },
+        {
+          "score": 0.927,
+          "expert_a": 12,
+          "expert_b": 37
+        },
+        {
+          "score": 0.9244,
+          "expert_a": 12,
+          "expert_b": 58
+        },
+        {
+          "score": 0.9187,
+          "expert_a": 30,
+          "expert_b": 37
+        },
+        {
+          "score": 0.9033,
+          "expert_a": 1,
+          "expert_b": 34
+        },
+        {
+          "score": 0.8821,
+          "expert_a": 31,
+          "expert_b": 57
+        },
+        {
+          "score": 0.8779,
+          "expert_a": 35,
+          "expert_b": 48
+        },
+        {
+          "score": 0.8712,
+          "expert_a": 26,
+          "expert_b": 50
+        },
+        {
+          "score": 0.8697,
+          "expert_a": 0,
+          "expert_b": 38
+        },
+        {
+          "score": 0.8552,
+          "expert_a": 6,
+          "expert_b": 11
+        },
+        {
+          "score": 0.8513,
+          "expert_a": 22,
+          "expert_b": 36
+        },
+        {
+          "score": 0.8492,
+          "expert_a": 2,
+          "expert_b": 6
+        }
+      ]
+    },
+    "14": {
+      "matrix_shape": [
+        64,
+        64
+      ],
+      "top_pairs": [
+        {
+          "score": 0.9827,
+          "expert_a": 0,
+          "expert_b": 31
+        },
+        {
+          "score": 0.9695,
+          "expert_a": 0,
+          "expert_b": 18
+        },
+        {
+          "score": 0.9678,
+          "expert_a": 11,
+          "expert_b": 42
+        },
+        {
+          "score": 0.9594,
+          "expert_a": 20,
+          "expert_b": 53
+        },
+        {
+          "score": 0.9561,
+          "expert_a": 18,
+          "expert_b": 31
+        },
+        {
+          "score": 0.9212,
+          "expert_a": 42,
+          "expert_b": 60
+        },
+        {
+          "score": 0.9199,
+          "expert_a": 38,
+          "expert_b": 41
+        },
+        {
+          "score": 0.9128,
+          "expert_a": 11,
+          "expert_b": 60
+        },
+        {
+          "score": 0.9096,
+          "expert_a": 6,
+          "expert_b": 36
+        },
+        {
+          "score": 0.8801,
+          "expert_a": 11,
+          "expert_b": 12
+        },
+        {
+          "score": 0.8743,
+          "expert_a": 9,
+          "expert_b": 42
+        },
+        {
+          "score": 0.8713,
+          "expert_a": 9,
+          "expert_b": 11
+        },
+        {
+          "score": 0.8709,
+          "expert_a": 39,
+          "expert_b": 47
+        },
+        {
+          "score": 0.8702,
+          "expert_a": 7,
+          "expert_b": 39
+        },
+        {
+          "score": 0.8602,
+          "expert_a": 34,
+          "expert_b": 63
+        },
+        {
+          "score": 0.8591,
+          "expert_a": 10,
+          "expert_b": 18
+        },
+        {
+          "score": 0.8577,
+          "expert_a": 0,
+          "expert_b": 10
+        },
+        {
+          "score": 0.8528,
+          "expert_a": 6,
+          "expert_b": 28
+        },
+        {
+          "score": 0.8499,
+          "expert_a": 19,
+          "expert_b": 47
+        },
+        {
+          "score": 0.8478,
+          "expert_a": 36,
+          "expert_b": 58
+        }
+      ]
+    },
+    "15": {
+      "matrix_shape": [
+        64,
+        64
+      ],
+      "top_pairs": [
+        {
+          "score": 0.9934,
+          "expert_a": 10,
+          "expert_b": 13
+        },
+        {
+          "score": 0.9849,
+          "expert_a": 10,
+          "expert_b": 46
+        },
+        {
+          "score": 0.9795,
+          "expert_a": 15,
+          "expert_b": 62
+        },
+        {
+          "score": 0.9712,
+          "expert_a": 13,
+          "expert_b": 46
+        },
+        {
+          "score": 0.9615,
+          "expert_a": 21,
+          "expert_b": 55
+        },
+        {
+          "score": 0.931,
+          "expert_a": 35,
+          "expert_b": 53
+        },
+        {
+          "score": 0.9247,
+          "expert_a": 0,
+          "expert_b": 43
+        },
+        {
+          "score": 0.9228,
+          "expert_a": 8,
+          "expert_b": 30
+        },
+        {
+          "score": 0.9206,
+          "expert_a": 7,
+          "expert_b": 21
+        },
+        {
+          "score": 0.9112,
+          "expert_a": 1,
+          "expert_b": 29
+        },
+        {
+          "score": 0.8912,
+          "expert_a": 31,
+          "expert_b": 43
+        },
+        {
+          "score": 0.8729,
+          "expert_a": 0,
+          "expert_b": 31
+        },
+        {
+          "score": 0.8658,
+          "expert_a": 36,
+          "expert_b": 43
+        },
+        {
+          "score": 0.8516,
+          "expert_a": 4,
+          "expert_b": 10
+        },
+        {
+          "score": 0.8512,
+          "expert_a": 7,
+          "expert_b": 55
+        },
+        {
+          "score": 0.847,
+          "expert_a": 4,
+          "expert_b": 13
+        },
+        {
+          "score": 0.8404,
+          "expert_a": 38,
+          "expert_b": 39
+        },
+        {
+          "score": 0.8382,
+          "expert_a": 4,
+          "expert_b": 46
+        },
+        {
+          "score": 0.8372,
+          "expert_a": 0,
+          "expert_b": 36
+        },
+        {
+          "score": 0.8372,
+          "expert_a": 0,
+          "expert_b": 41
+        }
+      ]
+    }
+  },
+  "expert_groups": {
+    "0": [
+      [
+        23
+      ],
+      [
+        63
+      ],
+      [
+        7,
+        39,
+        43
+      ],
+      [
+        5
+      ],
+      [
+        46
+      ],
+      [
+        38
+      ],
+      [
+        8
+      ],
+      [
+        6
+      ],
+      [
+        18
+      ],
+      [
+        31
+      ],
+      [
+        32
+      ],
+      [
+        26
+      ],
+      [
+        54
+      ],
+      [
+        27
+      ],
+      [
+        16
+      ],
+      [
+        14
+      ],
+      [
+        36
+      ],
+      [
+        57
+      ],
+      [
+        48
+      ],
+      [
+        56
+      ],
+      [
+        4
+      ],
+      [
+        20
+      ],
+      [
+        22
+      ],
+      [
+        12
+      ],
+      [
+        13
+      ],
+      [
+        58
+      ],
+      [
+        3
+      ],
+      [
+        40
+      ],
+      [
+        60
+      ],
+      [
+        19
+      ],
+      [
+        24
+      ],
+      [
+        45
+      ],
+      [
+        9
+      ],
+      [
+        62
+      ],
+      [
+        50
+      ],
+      [
+        59
+      ],
+      [
+        33
+      ],
+      [
+        47
+      ],
+      [
+        25
+      ],
+      [
+        44
+      ],
+      [
+        53
+      ],
+      [
+        35
+      ],
+      [
+        41
+      ],
+      [
+        2
+      ],
+      [
+        29
+      ],
+      [
+        10
+      ],
+      [
+        28
+      ],
+      [
+        37
+      ],
+      [
+        42
+      ],
+      [
+        17
+      ],
+      [
+        61
+      ],
+      [
+        55
+      ],
+      [
+        49
+      ],
+      [
+        51
+      ],
+      [
+        0
+      ],
+      [
+        15
+      ],
+      [
+        11
+      ],
+      [
+        1
+      ],
+      [
+        30
+      ],
+      [
+        21
+      ],
+      [
+        52
+      ],
+      [
+        34
+      ]
+    ],
+    "1": [
+      [
+        40
+      ],
+      [
+        37
+      ],
+      [
+        5
+      ],
+      [
+        35
+      ],
+      [
+        59
+      ],
+      [
+        49
+      ],
+      [
+        12
+      ],
+      [
+        50
+      ],
+      [
+        1
+      ],
+      [
+        39
+      ],
+      [
+        45
+      ],
+      [
+        20
+      ],
+      [
+        47
+      ],
+      [
+        54
+      ],
+      [
+        18
+      ],
+      [
+        25
+      ],
+      [
+        62
+      ],
+      [
+        32
+      ],
+      [
+        63
+      ],
+      [
+        2
+      ],
+      [
+        0
+      ],
+      [
+        21
+      ],
+      [
+        60
+      ],
+      [
+        7
+      ],
+      [
+        14
+      ],
+      [
+        13
+      ],
+      [
+        3
+      ],
+      [
+        41
+      ],
+      [
+        58
+      ],
+      [
+        23
+      ],
+      [
+        22
+      ],
+      [
+        52
+      ],
+      [
+        36
+      ],
+      [
+        27
+      ],
+      [
+        29
+      ],
+      [
+        16
+      ],
+      [
+        11
+      ],
+      [
+        57
+      ],
+      [
+        38
+      ],
+      [
+        53
+      ],
+      [
+        19
+      ],
+      [
+        30
+      ],
+      [
+        4
+      ],
+      [
+        51
+      ],
+      [
+        42
+      ],
+      [
+        9
+      ],
+      [
+        61
+      ],
+      [
+        48
+      ],
+      [
+        31
+      ],
+      [
+        55
+      ],
+      [
+        17
+      ],
+      [
+        8
+      ],
+      [
+        46
+      ],
+      [
+        24
+      ],
+      [
+        34
+      ],
+      [
+        10
+      ],
+      [
+        33
+      ],
+      [
+        28
+      ],
+      [
+        15
+      ],
+      [
+        6
+      ],
+      [
+        26
+      ],
+      [
+        44
+      ],
+      [
+        43
+      ],
+      [
+        56
+      ]
+    ],
+    "2": [
+      [
+        22
+      ],
+      [
+        20
+      ],
+      [
+        23
+      ],
+      [
+        53
+      ],
+      [
+        1
+      ],
+      [
+        57
+      ],
+      [
+        29
+      ],
+      [
+        0
+      ],
+      [
+        35
+      ],
+      [
+        10
+      ],
+      [
+        6
+      ],
+      [
+        4
+      ],
+      [
+        58
+      ],
+      [
+        63
+      ],
+      [
+        62
+      ],
+      [
+        21
+      ],
+      [
+        41
+      ],
+      [
+        7
+      ],
+      [
+        54
+      ],
+      [
+        19
+      ],
+      [
+        44
+      ],
+      [
+        3
+      ],
+      [
+        59
+      ],
+      [
+        33
+      ],
+      [
+        39
+      ],
+      [
+        38
+      ],
+      [
+        36
+      ],
+      [
+        46
+      ],
+      [
+        15
+      ],
+      [
+        37
+      ],
+      [
+        13
+      ],
+      [
+        26
+      ],
+      [
+        14
+      ],
+      [
+        25
+      ],
+      [
+        24
+      ],
+      [
+        27
+      ],
+      [
+        48
+      ],
+      [
+        34
+      ],
+      [
+        47
+      ],
+      [
+        56
+      ],
+      [
+        5,
+        40
+      ],
+      [
+        9
+      ],
+      [
+        8
+      ],
+      [
+        2
+      ],
+      [
+        60
+      ],
+      [
+        31
+      ],
+      [
+        51
+      ],
+      [
+        11
+      ],
+      [
+        18
+      ],
+      [
+        52
+      ],
+      [
+        50
+      ],
+      [
+        30
+      ],
+      [
+        16
+      ],
+      [
+        43
+      ],
+      [
+        55
+      ],
+      [
+        28
+      ],
+      [
+        42
+      ],
+      [
+        61
+      ],
+      [
+        12
+      ],
+      [
+        17
+      ],
+      [
+        49
+      ],
+      [
+        32
+      ],
+      [
+        45
+      ]
+    ],
+    "3": [
+      [
+        30,
+        54
+      ],
+      [
+        28
+      ],
+      [
+        49
+      ],
+      [
+        27
+      ],
+      [
+        18
+      ],
+      [
+        12
+      ],
+      [
+        21
+      ],
+      [
+        32
+      ],
+      [
+        59
+      ],
+      [
+        25
+      ],
+      [
+        57
+      ],
+      [
+        33
+      ],
+      [
+        37
+      ],
+      [
+        22
+      ],
+      [
+        2
+      ],
+      [
+        58
+      ],
+      [
+        10
+      ],
+      [
+        56
+      ],
+      [
+        50
+      ],
+      [
+        38
+      ],
+      [
+        6
+      ],
+      [
+        7
+      ],
+      [
+        42
+      ],
+      [
+        45
+      ],
+      [
+        40
+      ],
+      [
+        46
+      ],
+      [
+        20
+      ],
+      [
+        52
+      ],
+      [
+        19
+      ],
+      [
+        0
+      ],
+      [
+        8
+      ],
+      [
+        48
+      ],
+      [
+        62
+      ],
+      [
+        51
+      ],
+      [
+        11
+      ],
+      [
+        34
+      ],
+      [
+        47
+      ],
+      [
+        31
+      ],
+      [
+        1
+      ],
+      [
+        4
+      ],
+      [
+        9
+      ],
+      [
+        35
+      ],
+      [
+        41
+      ],
+      [
+        23
+      ],
+      [
+        5
+      ],
+      [
+        43
+      ],
+      [
+        63
+      ],
+      [
+        17,
+        60
+      ],
+      [
+        36
+      ],
+      [
+        3
+      ],
+      [
+        24
+      ],
+      [
+        14,
+        55
+      ],
+      [
+        44
+      ],
+      [
+        16
+      ],
+      [
+        53
+      ],
+      [
+        29
+      ],
+      [
+        13
+      ],
+      [
+        26
+      ],
+      [
+        61
+      ],
+      [
+        15
+      ],
+      [
+        39
+      ]
+    ],
+    "4": [
+      [
+        42,
+        59
+      ],
+      [
+        23
+      ],
+      [
+        38,
+        60
+      ],
+      [
+        53
+      ],
+      [
+        26
+      ],
+      [
+        13
+      ],
+      [
+        44
+      ],
+      [
+        40
+      ],
+      [
+        24
+      ],
+      [
+        62
+      ],
+      [
+        36
+      ],
+      [
+        22
+      ],
+      [
+        58
+      ],
+      [
+        57
+      ],
+      [
+        0
+      ],
+      [
+        5
+      ],
+      [
+        61
+      ],
+      [
+        30
+      ],
+      [
+        56
+      ],
+      [
+        51
+      ],
+      [
+        45
+      ],
+      [
+        50
+      ],
+      [
+        1
+      ],
+      [
+        46
+      ],
+      [
+        18
+      ],
+      [
+        10
+      ],
+      [
+        52
+      ],
+      [
+        35
+      ],
+      [
+        8
+      ],
+      [
+        43
+      ],
+      [
+        48
+      ],
+      [
+        41
+      ],
+      [
+        7
+      ],
+      [
+        29
+      ],
+      [
+        19,
+        55
+      ],
+      [
+        54
+      ],
+      [
+        2
+      ],
+      [
+        39
+      ],
+      [
+        49
+      ],
+      [
+        21
+      ],
+      [
+        27
+      ],
+      [
+        20
+      ],
+      [
+        17
+      ],
+      [
+        33
+      ],
+      [
+        4
+      ],
+      [
+        9
+      ],
+      [
+        3
+      ],
+      [
+        12,
+        28,
+        32
+      ],
+      [
+        37
+      ],
+      [
+        47
+      ],
+      [
+        31
+      ],
+      [
+        11
+      ],
+      [
+        34
+      ],
+      [
+        6
+      ],
+      [
+        15
+      ],
+      [
+        25
+      ],
+      [
+        14
+      ],
+      [
+        16
+      ],
+      [
+        63
+      ]
+    ],
+    "5": [
+      [
+        22,
+        30,
+        52,
+        58
+      ],
+      [
+        18
+      ],
+      [
+        24
+      ],
+      [
+        7
+      ],
+      [
+        45
+      ],
+      [
+        54
+      ],
+      [
+        12
+      ],
+      [
+        36
+      ],
+      [
+        48
+      ],
+      [
+        4
+      ],
+      [
+        1
+      ],
+      [
+        20
+      ],
+      [
+        3
+      ],
+      [
+        32
+      ],
+      [
+        50
+      ],
+      [
+        46
+      ],
+      [
+        59
+      ],
+      [
+        10
+      ],
+      [
+        9
+      ],
+      [
+        11
+      ],
+      [
+        14
+      ],
+      [
+        56
+      ],
+      [
+        27
+      ],
+      [
+        38
+      ],
+      [
+        8
+      ],
+      [
+        33
+      ],
+      [
+        34
+      ],
+      [
+        0
+      ],
+      [
+        29
+      ],
+      [
+        63
+      ],
+      [
+        37
+      ],
+      [
+        2,
+        42
+      ],
+      [
+        16
+      ],
+      [
+        41
+      ],
+      [
+        47
+      ],
+      [
+        19
+      ],
+      [
+        49
+      ],
+      [
+        57
+      ],
+      [
+        23
+      ],
+      [
+        44
+      ],
+      [
+        40
+      ],
+      [
+        13
+      ],
+      [
+        21
+      ],
+      [
+        25
+      ],
+      [
+        17
+      ],
+      [
+        60
+      ],
+      [
+        55
+      ],
+      [
+        39
+      ],
+      [
+        6,
+        43
+      ],
+      [
+        28
+      ],
+      [
+        15
+      ],
+      [
+        62
+      ],
+      [
+        26
+      ],
+      [
+        61
+      ],
+      [
+        35
+      ],
+      [
+        31
+      ],
+      [
+        51
+      ],
+      [
+        5
+      ],
+      [
+        53
+      ]
+    ],
+    "6": [
+      [
+        25,
+        55,
+        62
+      ],
+      [
+        12
+      ],
+      [
+        14
+      ],
+      [
+        51
+      ],
+      [
+        5
+      ],
+      [
+        27
+      ],
+      [
+        6
+      ],
+      [
+        56,
+        60
+      ],
+      [
+        47,
+        48
+      ],
+      [
+        41
+      ],
+      [
+        21
+      ],
+      [
+        46
+      ],
+      [
+        63
+      ],
+      [
+        42,
+        52
+      ],
+      [
+        7
+      ],
+      [
+        30
+      ],
+      [
+        4,
+        26
+      ],
+      [
+        3
+      ],
+      [
+        49,
+        59
+      ],
+      [
+        13
+      ],
+      [
+        33
+      ],
+      [
+        11
+      ],
+      [
+        15
+      ],
+      [
+        35
+      ],
+      [
+        37
+      ],
+      [
+        16
+      ],
+      [
+        2
+      ],
+      [
+        0
+      ],
+      [
+        10
+      ],
+      [
+        31
+      ],
+      [
+        45
+      ],
+      [
+        39
+      ],
+      [
+        61
+      ],
+      [
+        17
+      ],
+      [
+        43
+      ],
+      [
+        28
+      ],
+      [
+        50
+      ],
+      [
+        57
+      ],
+      [
+        29
+      ],
+      [
+        34
+      ],
+      [
+        22
+      ],
+      [
+        44
+      ],
+      [
+        38
+      ],
+      [
+        54
+      ],
+      [
+        53
+      ],
+      [
+        8
+      ],
+      [
+        32
+      ],
+      [
+        40
+      ],
+      [
+        36
+      ],
+      [
+        19
+      ],
+      [
+        24
+      ],
+      [
+        18
+      ],
+      [
+        20
+      ],
+      [
+        58
+      ],
+      [
+        1
+      ],
+      [
+        23
+      ],
+      [
+        9
+      ]
+    ],
+    "7": [
+      [
+        23,
+        41,
+        48,
+        56
+      ],
+      [
+        50,
+        51
+      ],
+      [
+        57
+      ],
+      [
+        6,
+        15
+      ],
+      [
+        44
+      ],
+      [
+        8
+      ],
+      [
+        5,
+        26,
+        46
+      ],
+      [
+        28
+      ],
+      [
+        38
+      ],
+      [
+        20
+      ],
+      [
+        19,
+        52
+      ],
+      [
+        62
+      ],
+      [
+        11
+      ],
+      [
+        36
+      ],
+      [
+        54
+      ],
+      [
+        60
+      ],
+      [
+        53
+      ],
+      [
+        55
+      ],
+      [
+        14
+      ],
+      [
+        59
+      ],
+      [
+        61
+      ],
+      [
+        29
+      ],
+      [
+        3
+      ],
+      [
+        22
+      ],
+      [
+        18
+      ],
+      [
+        40
+      ],
+      [
+        4,
+        17
+      ],
+      [
+        10
+      ],
+      [
+        9
+      ],
+      [
+        63
+      ],
+      [
+        30
+      ],
+      [
+        32
+      ],
+      [
+        24
+      ],
+      [
+        31
+      ],
+      [
+        16
+      ],
+      [
+        25
+      ],
+      [
+        43
+      ],
+      [
+        35,
+        39,
+        45
+      ],
+      [
+        34
+      ],
+      [
+        47
+      ],
+      [
+        42,
+        49
+      ],
+      [
+        58
+      ],
+      [
+        0
+      ],
+      [
+        7
+      ],
+      [
+        2
+      ],
+      [
+        13
+      ],
+      [
+        37
+      ],
+      [
+        1
+      ],
+      [
+        27
+      ],
+      [
+        21
+      ],
+      [
+        33
+      ],
+      [
+        12
+      ]
+    ],
+    "8": [
+      [
+        1,
+        10,
+        21,
+        30,
+        35,
+        50
+      ],
+      [
+        4,
+        43
+      ],
+      [
+        17,
+        28,
+        47
+      ],
+      [
+        0,
+        40
+      ],
+      [
+        34,
+        55,
+        57,
+        63
+      ],
+      [
+        13,
+        31
+      ],
+      [
+        46
+      ],
+      [
+        8
+      ],
+      [
+        15
+      ],
+      [
+        36
+      ],
+      [
+        12
+      ],
+      [
+        25
+      ],
+      [
+        39
+      ],
+      [
+        9
+      ],
+      [
+        42
+      ],
+      [
+        5
+      ],
+      [
+        38
+      ],
+      [
+        29,
+        32
+      ],
+      [
+        56
+      ],
+      [
+        54
+      ],
+      [
+        20
+      ],
+      [
+        19
+      ],
+      [
+        23,
+        53
+      ],
+      [
+        11
+      ],
+      [
+        3
+      ],
+      [
+        18
+      ],
+      [
+        24
+      ],
+      [
+        44
+      ],
+      [
+        14
+      ],
+      [
+        52
+      ],
+      [
+        61
+      ],
+      [
+        37,
+        45
+      ],
+      [
+        26
+      ],
+      [
+        51
+      ],
+      [
+        58
+      ],
+      [
+        49
+      ],
+      [
+        27
+      ],
+      [
+        41
+      ],
+      [
+        2
+      ],
+      [
+        16
+      ],
+      [
+        48
+      ],
+      [
+        6
+      ],
+      [
+        62
+      ],
+      [
+        59
+      ],
+      [
+        33
+      ],
+      [
+        7,
+        60
+      ],
+      [
+        22
+      ]
+    ],
+    "9": [
+      [
+        13,
+        16,
+        21,
+        23,
+        45
+      ],
+      [
+        3,
+        53
+      ],
+      [
+        22,
+        25,
+        56
+      ],
+      [
+        32,
+        43,
+        58
+      ],
+      [
+        0,
+        37,
+        55
+      ],
+      [
+        29,
+        59
+      ],
+      [
+        49
+      ],
+      [
+        10
+      ],
+      [
+        8,
+        42
+      ],
+      [
+        48
+      ],
+      [
+        62
+      ],
+      [
+        2
+      ],
+      [
+        15
+      ],
+      [
+        1,
+        38
+      ],
+      [
+        44
+      ],
+      [
+        19
+      ],
+      [
+        35
+      ],
+      [
+        36
+      ],
+      [
+        52
+      ],
+      [
+        28
+      ],
+      [
+        46
+      ],
+      [
+        26,
+        41
+      ],
+      [
+        17
+      ],
+      [
+        5
+      ],
+      [
+        51
+      ],
+      [
+        12
+      ],
+      [
+        63
+      ],
+      [
+        27
+      ],
+      [
+        11
+      ],
+      [
+        47
+      ],
+      [
+        14,
+        30
+      ],
+      [
+        18
+      ],
+      [
+        33
+      ],
+      [
+        50
+      ],
+      [
+        9
+      ],
+      [
+        39
+      ],
+      [
+        7
+      ],
+      [
+        24
+      ],
+      [
+        40
+      ],
+      [
+        20
+      ],
+      [
+        60
+      ],
+      [
+        61
+      ],
+      [
+        54
+      ],
+      [
+        4
+      ],
+      [
+        34
+      ],
+      [
+        31
+      ],
+      [
+        6
+      ],
+      [
+        57
+      ]
+    ],
+    "10": [
+      [
+        10,
+        27,
+        33,
+        51
+      ],
+      [
+        17,
+        32,
+        37,
+        52
+      ],
+      [
+        7,
+        30,
+        38,
+        42
+      ],
+      [
+        1,
+        14,
+        36
+      ],
+      [
+        25,
+        63
+      ],
+      [
+        16
+      ],
+      [
+        54
+      ],
+      [
+        12,
+        50
+      ],
+      [
+        2,
+        31
+      ],
+      [
+        21,
+        26
+      ],
+      [
+        24
+      ],
+      [
+        6,
+        43,
+        59
+      ],
+      [
+        9,
+        39,
+        47,
+        53
+      ],
+      [
+        40
+      ],
+      [
+        56
+      ],
+      [
+        15
+      ],
+      [
+        62
+      ],
+      [
+        44
+      ],
+      [
+        28
+      ],
+      [
+        0,
+        60
+      ],
+      [
+        8
+      ],
+      [
+        35
+      ],
+      [
+        61
+      ],
+      [
+        45
+      ],
+      [
+        3
+      ],
+      [
+        41
+      ],
+      [
+        58
+      ],
+      [
+        22
+      ],
+      [
+        34,
+        49
+      ],
+      [
+        13
+      ],
+      [
+        11
+      ],
+      [
+        29
+      ],
+      [
+        23
+      ],
+      [
+        19
+      ],
+      [
+        57
+      ],
+      [
+        18
+      ],
+      [
+        5
+      ],
+      [
+        48
+      ],
+      [
+        55
+      ],
+      [
+        4
+      ],
+      [
+        20
+      ],
+      [
+        46
+      ]
+    ],
+    "11": [
+      [
+        15,
+        34,
+        58
+      ],
+      [
+        8,
+        42
+      ],
+      [
+        31
+      ],
+      [
+        19,
+        21,
+        30,
+        36
+      ],
+      [
+        60
+      ],
+      [
+        0,
+        11,
+        61
+      ],
+      [
+        18
+      ],
+      [
+        22,
+        24
+      ],
+      [
+        50
+      ],
+      [
+        53
+      ],
+      [
+        13,
+        63
+      ],
+      [
+        17
+      ],
+      [
+        35
+      ],
+      [
+        49
+      ],
+      [
+        3
+      ],
+      [
+        54
+      ],
+      [
+        27,
+        47
+      ],
+      [
+        16
+      ],
+      [
+        33,
+        52,
+        56
+      ],
+      [
+        39
+      ],
+      [
+        1
+      ],
+      [
+        6
+      ],
+      [
+        48
+      ],
+      [
+        57
+      ],
+      [
+        32,
+        45
+      ],
+      [
+        55
+      ],
+      [
+        26
+      ],
+      [
+        4
+      ],
+      [
+        44
+      ],
+      [
+        25
+      ],
+      [
+        20
+      ],
+      [
+        7
+      ],
+      [
+        43
+      ],
+      [
+        9,
+        41
+      ],
+      [
+        23
+      ],
+      [
+        46
+      ],
+      [
+        5
+      ],
+      [
+        12
+      ],
+      [
+        40
+      ],
+      [
+        10
+      ],
+      [
+        59
+      ],
+      [
+        37,
+        51
+      ],
+      [
+        2
+      ],
+      [
+        28
+      ],
+      [
+        14
+      ],
+      [
+        62
+      ],
+      [
+        29
+      ],
+      [
+        38
+      ]
+    ],
+    "12": [
+      [
+        14,
+        46,
+        50,
+        52
+      ],
+      [
+        22
+      ],
+      [
+        1,
+        16,
+        34,
+        49
+      ],
+      [
+        61
+      ],
+      [
+        48,
+        53
+      ],
+      [
+        6,
+        9,
+        54,
+        58
+      ],
+      [
+        4
+      ],
+      [
+        7,
+        21
+      ],
+      [
+        5
+      ],
+      [
+        15
+      ],
+      [
+        37
+      ],
+      [
+        0
+      ],
+      [
+        27
+      ],
+      [
+        62
+      ],
+      [
+        43
+      ],
+      [
+        33
+      ],
+      [
+        18
+      ],
+      [
+        63
+      ],
+      [
+        25,
+        42
+      ],
+      [
+        3,
+        29
+      ],
+      [
+        19
+      ],
+      [
+        11,
+        35
+      ],
+      [
+        13,
+        39
+      ],
+      [
+        45
+      ],
+      [
+        36
+      ],
+      [
+        2
+      ],
+      [
+        32
+      ],
+      [
+        8,
+        38
+      ],
+      [
+        51
+      ],
+      [
+        40
+      ],
+      [
+        41
+      ],
+      [
+        59
+      ],
+      [
+        55
+      ],
+      [
+        47
+      ],
+      [
+        26,
+        56
+      ],
+      [
+        60
+      ],
+      [
+        44
+      ],
+      [
+        31
+      ],
+      [
+        57
+      ],
+      [
+        24
+      ],
+      [
+        30
+      ],
+      [
+        10
+      ],
+      [
+        12
+      ],
+      [
+        28
+      ],
+      [
+        20
+      ],
+      [
+        23
+      ],
+      [
+        17
+      ]
+    ],
+    "13": [
+      [
+        1,
+        34
+      ],
+      [
+        22,
+        31,
+        36,
+        57
+      ],
+      [
+        8,
+        41
+      ],
+      [
+        12,
+        30,
+        33,
+        37,
+        58
+      ],
+      [
+        3
+      ],
+      [
+        35,
+        48
+      ],
+      [
+        40
+      ],
+      [
+        13
+      ],
+      [
+        0,
+        38
+      ],
+      [
+        14
+      ],
+      [
+        6,
+        11
+      ],
+      [
+        49
+      ],
+      [
+        44
+      ],
+      [
+        63
+      ],
+      [
+        56
+      ],
+      [
+        24
+      ],
+      [
+        52
+      ],
+      [
+        47
+      ],
+      [
+        19
+      ],
+      [
+        15
+      ],
+      [
+        20
+      ],
+      [
+        26,
+        50
+      ],
+      [
+        5
+      ],
+      [
+        45
+      ],
+      [
+        53
+      ],
+      [
+        54
+      ],
+      [
+        42
+      ],
+      [
+        60
+      ],
+      [
+        2
+      ],
+      [
+        10,
+        18,
+        28
+      ],
+      [
+        25,
+        62
+      ],
+      [
+        29
+      ],
+      [
+        55
+      ],
+      [
+        32
+      ],
+      [
+        39
+      ],
+      [
+        43
+      ],
+      [
+        9
+      ],
+      [
+        17
+      ],
+      [
+        27
+      ],
+      [
+        21
+      ],
+      [
+        59
+      ],
+      [
+        16
+      ],
+      [
+        4
+      ],
+      [
+        46
+      ],
+      [
+        51
+      ],
+      [
+        7
+      ],
+      [
+        61
+      ],
+      [
+        23
+      ]
+    ],
+    "14": [
+      [
+        38,
+        41,
+        59
+      ],
+      [
+        15,
+        44
+      ],
+      [
+        0,
+        18,
+        21,
+        31
+      ],
+      [
+        14,
+        55
+      ],
+      [
+        34,
+        63
+      ],
+      [
+        42,
+        45
+      ],
+      [
+        10,
+        48
+      ],
+      [
+        20,
+        53
+      ],
+      [
+        16
+      ],
+      [
+        2
+      ],
+      [
+        40,
+        49
+      ],
+      [
+        6,
+        28,
+        36
+      ],
+      [
+        3
+      ],
+      [
+        51
+      ],
+      [
+        43
+      ],
+      [
+        46
+      ],
+      [
+        32
+      ],
+      [
+        25
+      ],
+      [
+        62
+      ],
+      [
+        9,
+        11,
+        60
+      ],
+      [
+        7,
+        39,
+        47
+      ],
+      [
+        56
+      ],
+      [
+        50
+      ],
+      [
+        23
+      ],
+      [
+        37
+      ],
+      [
+        5
+      ],
+      [
+        30
+      ],
+      [
+        24
+      ],
+      [
+        35
+      ],
+      [
+        17
+      ],
+      [
+        33
+      ],
+      [
+        57
+      ],
+      [
+        8
+      ],
+      [
+        12
+      ],
+      [
+        26,
+        27
+      ],
+      [
+        19
+      ],
+      [
+        58
+      ],
+      [
+        54
+      ],
+      [
+        4
+      ],
+      [
+        61
+      ],
+      [
+        1
+      ],
+      [
+        13
+      ],
+      [
+        52
+      ],
+      [
+        29
+      ],
+      [
+        22
+      ]
+    ],
+    "15": [
+      [
+        2,
+        54
+      ],
+      [
+        10,
+        13,
+        15,
+        62
+      ],
+      [
+        7,
+        21,
+        55
+      ],
+      [
+        25,
+        51
+      ],
+      [
+        28
+      ],
+      [
+        49
+      ],
+      [
+        56,
+        61
+      ],
+      [
+        4,
+        46
+      ],
+      [
+        26,
+        38
+      ],
+      [
+        14
+      ],
+      [
+        45
+      ],
+      [
+        47
+      ],
+      [
+        52
+      ],
+      [
+        27
+      ],
+      [
+        59
+      ],
+      [
+        39
+      ],
+      [
+        17
+      ],
+      [
+        23
+      ],
+      [
+        34
+      ],
+      [
+        42
+      ],
+      [
+        48
+      ],
+      [
+        50
+      ],
+      [
+        20
+      ],
+      [
+        30,
+        58
+      ],
+      [
+        40,
+        41
+      ],
+      [
+        63
+      ],
+      [
+        3
+      ],
+      [
+        8
+      ],
+      [
+        1,
+        60
+      ],
+      [
+        29
+      ],
+      [
+        5,
+        19
+      ],
+      [
+        22
+      ],
+      [
+        11
+      ],
+      [
+        18
+      ],
+      [
+        12
+      ],
+      [
+        35,
+        36,
+        43
+      ],
+      [
+        16
+      ],
+      [
+        37
+      ],
+      [
+        0,
+        31
+      ],
+      [
+        53
+      ],
+      [
+        9
+      ],
+      [
+        32
+      ],
+      [
+        33
+      ],
+      [
+        24
+      ],
+      [
+        6
+      ],
+      [
+        44
+      ],
+      [
+        57
+      ]
+    ]
+  }
+}

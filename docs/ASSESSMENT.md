@@ -180,7 +180,10 @@ Key Findings — What The Data Proves:
 |-----------|--------|----------|
 | Tiered KV cache + CoT eviction | ✅ Implemented | `examples/server/server-context.cpp` (release_slots hook) — evicts thinking tokens from cache_tokens on slot release |
 | Quantization presets (7 model configs + 3 sampling) | ✅ Working | `configs/presets/` (quality/balanced/lean/ultra-lean) + `configs/sampling/` + `scripts/quantize.sh` |
-| Frequency-aware expert paging (MoE) | ⬜ Next up | OLMoE-1B-7B downloaded (64 experts, 8 active, 4.2 GB Q4) — ideal test model |
+| OLMoE arch support (ik_llama.cpp) | ✅ Working | 8 files patched: `llama-arch.h/cpp`, `llama-model.cpp`, `llama-hparams.cpp`, `llama-load-tensors.cpp`, `llama-build-context.h/cpp`, `llama.cpp` — 43 t/s on Ryzen 7735U |
+| Expert frequency profiler | ✅ Working | `profiles/profiler.py` — GGUF router weight analysis, hot/warm/cold classification (20/30/50%), outputs `olmoe_expert_profile.json` |
+| Expert co-activation matrix | ✅ Working | `profiles/coactivation.py` — cosine similarity of router weights, expert group finder, outputs `olmoe_coactivation.json` |
+| Frequency-aware expert paging (runtime) | ⬜ Next | Wire hot/warm/cold profile into ik_llama.cpp expert placement (`-ot exps=CPU` integration) |
 
 ### Phase 2b: Metal Backend (M5/A19 Optimized)
 
