@@ -180,7 +180,7 @@ Key Findings — What The Data Proves:
 |-----------|--------|----------|
 | Tiered KV cache + CoT eviction | ✅ Implemented | `examples/server/server-context.cpp` (release_slots hook) — evicts thinking tokens from cache_tokens on slot release |
 | Quantization presets (7 model configs + 3 sampling) | ✅ Working | `configs/presets/` (quality/balanced/lean/ultra-lean) + `configs/sampling/` + `scripts/quantize.sh` |
-| Frequency-aware expert paging (MoE) | ⬜ Not started | — |
+| Frequency-aware expert paging (MoE) | ⬜ Next up | OLMoE-1B-7B downloaded (64 experts, 8 active, 4.2 GB Q4) — ideal test model |
 
 ### Phase 2b: Metal Backend (M5/A19 Optimized)
 
