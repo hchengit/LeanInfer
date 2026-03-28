@@ -1,8 +1,8 @@
 # LeanInfer — Technical Assessment & Architecture Plan
 
 **Date:** 2026-03-24
-**Status:** Phase 2c complete, Phase 2b skipped (Mac-only), Phase 3 next
-**Last Updated:** 2026-03-27
+**Status:** Phase 3 complete (Linux/CPU) — Metal code written, pending M2 compile+test
+**Last Updated:** 2026-03-28
 
 ---
 
@@ -187,30 +187,314 @@ Key Findings — What The Data Proves:
 | Placement policy generator | ✅ Working | `profiles/policy.py` — blends 70% runtime + 30% weight signal; outputs `profiles/policy.json` |
 | Frequency-aware expert paging (madvise) | ✅ Working | `llama_apply_expert_policy()` + `--policy-file`; WILLNEED on 208 hot + DONTNEED on 512 cold experts; 2160 madvise calls on mmap'd tensor regions |
 
-### Phase 2b: Metal Backend (M5/A19 Optimized)
+### Phase 2b: Metal Backend (Apple Silicon)
 
-> **Deferred** — M2 MacBook available; resume when switching to macOS dev environment.
+> **In progress** — code written on Linux, requires M2 Mac to compile/test.
 
 | Component | Status | Location |
 |-----------|--------|----------|
-| Metal 4 backend skeleton (MTLDevice, ggml reg) | 🔜 Deferred | M2 Mac |
-| TensorOps + MPP GEMM dispatch | 🔜 Deferred | M2 Mac |
-| Cooperative tensor fusion (attn, FFN, DeltaNet) | 🔜 Deferred | M2 Mac |
-| Unified memory allocator (MTLBuffer heaps) | 🔜 Deferred | M2 Mac |
-| Tile size auto-tuning (tile_sweep.py) | 🔜 Deferred | M2 Mac |
-| M5-specific quant presets (Q8 attn + Q4 FFN) | 🔜 Deferred | M2 Mac |
+| GGML Metal backend (ik_llama.cpp base) | ✅ Inherited | `ggml/src/ggml-metal.m` + `ggml-metal.metal` (4.5k + 10.3k lines) |
+| Fused RMSNorm+SwiGLU Metal kernels (f32 + f16) | ✅ Written | `ggml/src/leaninfer-fused.metal` — 4 kernels, TG=256 threads |
+| MTLHeap sub-allocator + device init | ✅ Written | `src/leaninfer-metal.mm` — shared heap, PSO cache, eval hook |
+| C API + stub fallback for non-Apple builds | ✅ Written | `src/leaninfer-metal.h` |
+| CMake integration (`-DLEANINFER_METAL=ON`) | ✅ Written | `src/CMakeLists.txt` |
+| macOS build script | ✅ Written | `scripts/metal_build.sh` |
+| Tile size auto-tuning | ✅ Written | `scripts/tile_sweep.py` (requires `metalcompute` on M2) |
+| Eval callback wiring (pre-op hook) | 🔜 Pending M2 | One code change in `llama.cpp` — see M2 continuation guide below |
+| End-to-end decode benchmark on M2 | 🔜 Pending M2 | Run `metal_build.sh` then `tile_sweep.py` |
+| Dynamic CPU/GPU routing (op-level) | 🔜 Pending M2 | Via `ggml_backend_sched_set_op_offload` after profiling |
+| M5/Metal 4 cooperative tensors | 🔜 Deferred | Requires M5 hardware (not M2) |
+
+---
+
+#### M2 Mac Continuation Guide
+
+> **Read this when resuming on the M2 Mac.** Everything in the table above
+> marked ✅ is already in the repo. The steps below are the complete sequence
+> to go from a fresh clone on M2 to a working, benchmarked Metal backend.
+
+##### Context (what was built on Linux and why)
+
+The existing ik_llama.cpp already ships a full Metal backend (`ggml-metal.m`,
+`ggml-metal.metal`). LeanInfer extends it with **cooperative tensor fusion**:
+instead of 5 separate GPU dispatches per FFN layer (RMSNorm → gate GEMM → up
+GEMM → SiLU×mul → write), our fused kernel does it in 2 dispatches by keeping
+`x_norm` in 32 KB threadgroup memory and computing gate + up projections
+simultaneously without writing intermediates to device memory.
+
+The four fused kernels are in `upstream/ggml/src/leaninfer-fused.metal`:
+- `kernel_fused_rms_norm_matmul_f32/f16` — RMSNorm + one projection, one dispatch
+- `kernel_fused_rms_norm_swiglu_f32/f16` — RMSNorm + gate + up + SiLU×mul, one dispatch
+
+The Objective-C++ wrapper (`src/leaninfer-metal.mm`) allocates the MTLHeap,
+compiles the shaders, and will register an eval callback — but one code change
+in `llama.cpp` is still needed to expose the callback hook (see Step 3 below).
+
+##### Prerequisites on M2 Mac
+
+```bash
+# Xcode Command Line Tools (includes xcrun metal compiler)
+xcode-select --install
+
+# CMake (if not present)
+brew install cmake
+
+# Python deps for tile sweep
+pip3 install metalcompute numpy
+
+# Verify Metal compiler
+xcrun metal --version   # should print: Apple metal version ...
+```
+
+##### Step 1 — Build
+
+```bash
+cd /path/to/LeanInfer
+./scripts/metal_build.sh
+```
+
+Expected output:
+```
+leaninfer-metal: compiled leaninfer-fused.metal from source
+leaninfer-metal: fused kernels compiled OK (swiglu_f32, swiglu_f16, rms_matmul_f32, rms_matmul_f16)
+```
+
+If the build fails on `leaninfer-metal.mm`, check that `-DGGML_METAL=ON` is
+being passed (the build script sets this). If it fails on `leaninfer-fused.metal`,
+read the xcrun error — most likely a syntax issue in the Metal shader.
+
+##### Step 2 — Baseline benchmark (without fused kernels)
+
+Run the model with full GPU offload (`-ngl 99`) and record baseline numbers.
+Use the Qwen 2.5-0.5B test model first, then the target 9B model:
+
+```bash
+./build-metal/bin/llama-cli \
+    --model models/qwen2.5-0.5b-instruct-q4_k_m.gguf \
+    -ngl 99 \
+    --kv-compress \
+    -n 128 \
+    -p "Write a short story about a robot." \
+    2>&1 | grep -E "eval time|prompt eval time|tok/s"
+```
+
+Record: `prompt_eval tok/s` and `eval tok/s`. These are the **pre-fusion
+baselines**. Write them into this file under "Phase 2b benchmark results".
+
+##### Step 3 — Wire the eval callback (the one pending code change)
+
+This is the **only code change** that wasn't made on Linux. It exposes a hook
+so `leaninfer-metal.mm` can register its fused-kernel callback inside llama's
+backend scheduler.
+
+**3a. Add to `upstream/src/llama-context.h`** — inside `struct llama_context`,
+after the `expert_prefetch_warm_cache` field added in Phase 3b:
+
+```cpp
+// LeanInfer Phase 2b: Metal fused kernel callback
+// Set via leaninfer_metal_set_eval_cb(). Called from expert_log_sched_eval_cb
+// for each node, chained after the expert-log/prefetch logic.
+ggml_backend_sched_eval_callback metal_eval_cb      = nullptr;
+void *                            metal_eval_cb_data = nullptr;
+```
+
+**3b. Add to `upstream/src/llama.cpp`** — at the bottom of
+`expert_log_sched_eval_cb`, after the existing expert-log and prefetch blocks,
+inside the `if (!ask)` branch:
+
+```cpp
+// LeanInfer Phase 2b: chain to Metal fused kernel callback
+if (lctx->metal_eval_cb) {
+    lctx->metal_eval_cb(t, false, lctx->metal_eval_cb_data);
+}
+```
+
+The full function structure should be:
+```
+expert_log_sched_eval_cb(t, ask, user_data):
+  if ask: return (strncmp(t->name, "ffn_moe_topk", 12)==0)
+              || (lctx->metal_eval_cb && lctx->metal_eval_cb(t, true, ...))
+  // existing expert-log block
+  // existing expert-prefetch block
+  // NEW: chain to metal_eval_cb
+```
+
+**3c. Add to `upstream/include/llama.h`** (public API):
+
+```cpp
+// LeanInfer Phase 2b — register Metal fused kernel callback.
+// Called from leaninfer_metal_init() in leaninfer-metal.mm.
+LLAMA_API void leaninfer_metal_set_eval_cb(
+        struct llama_context              * ctx,
+        ggml_backend_sched_eval_callback    cb,
+        void                              * user_data);
+```
+
+**3d. Add to `upstream/src/llama.cpp`** (implementation):
+
+```cpp
+void leaninfer_metal_set_eval_cb(struct llama_context * ctx,
+                                  ggml_backend_sched_eval_callback cb,
+                                  void * user_data) {
+    ctx->metal_eval_cb      = cb;
+    ctx->metal_eval_cb_data = user_data;
+}
+```
+
+**3e. Uncomment in `upstream/src/leaninfer-metal.mm`** —
+in `li_install_eval_callback()`, replace the TODO comment block with:
+
+```cpp
+leaninfer_metal_set_eval_cb(li->llama_ctx, li_eval_callback, li);
+```
+
+And delete the `fprintf(stderr, ...)` stub below it.
+
+**3f. Complete `li_eval_callback` in `leaninfer-metal.mm`** — the stub currently
+just returns `true`. Replace the `// TODO: wire MTLBuffer...` comment block with
+the actual dispatch. Key facts:
+- `t->data` is a valid CPU pointer on Apple Silicon (unified memory — no copy needed).
+- `t->src[0]->data` is `x` (pre-norm activations), `t->src[1]->data` is the weight matrix.
+- The existing ik_llama.cpp `ffn_up_gate` op fuses gate+up into one matrix `[2*N, K]`.
+  W_gate is the first N rows, W_up is the second N rows. Split with pointer arithmetic.
+- Dispatch `pso_swiglu_f32` or `pso_swiglu_f16` based on `t->src[1]->type`.
+- Grid: `ceil(N/TILE_N)` threadgroups; TG: 256 threads.
+- Encode into a new MTLCommandBuffer from `li->queue`, commit, and `waitUntilCompleted`.
+
+##### Step 4 — Rebuild and verify fused kernels are active
+
+```bash
+./scripts/metal_build.sh
+# Run with verbose Metal init:
+LEANINFER_METAL_VERBOSE=1 ./build-metal/bin/llama-cli \
+    --model models/qwen2.5-0.5b-instruct-q4_k_m.gguf \
+    -ngl 99 -n 32 -p "Hello"
+```
+
+Expected new log lines:
+```
+leaninfer-metal: device=Apple M2  heap=512/512 MB  fused_ffn=on  gpu_min=16384
+leaninfer-metal: eval callback registered
+```
+
+##### Step 5 — Tile sweep (find optimal M2 GEMM tile sizes)
+
+```bash
+# Decode case (batch M=1)
+python3 scripts/tile_sweep.py --model qwen35-9b --m 1 --n-iter 20
+
+# Prefill case (batch M=32)
+python3 scripts/tile_sweep.py --model qwen35-9b --m 32 --n-iter 20 \
+    --out scripts/tile_config_prefill.json
+```
+
+Write the winning tile sizes and GFLOPS numbers into the
+"Phase 2b benchmark results" section below.
+
+##### Step 6 — Post-fusion benchmark and comparison
+
+```bash
+./build-metal/bin/llama-cli \
+    --model models/qwen2.5-0.5b-instruct-q4_k_m.gguf \
+    -ngl 99 --kv-compress -n 128 \
+    -p "Write a short story about a robot." \
+    2>&1 | grep -E "eval time|prompt eval time|tok/s"
+```
+
+Compare to Step 2 baseline. Expected gains (from profiling data):
+- FFN is 30–43% of compute on target models (Qwen 3.5-9B / Qwen3-14B).
+- Eliminating 3 device-memory round-trips per FFN layer should yield
+  **5–15% decode speedup** and **10–20% prefill speedup** at these model sizes.
+- If gains are <3%, the bottleneck is the down projection GEMM (expected),
+  not the fused part — this is still correct; the fusion only helps when
+  bandwidth is the bottleneck, which it is during prefill more than decode.
+
+##### Step 7 — Dynamic CPU/GPU routing
+
+After benchmarking, check whether small ops (RMSNorm, RoPE, elementwise adds)
+run faster on CPU than GPU on M2. On Apple Silicon, the crossover point is
+typically around 64 KB tensors. To profile:
+
+```bash
+# Run with LeanInfer profiler to see per-op timing on M2
+./build-metal/bin/llama-cli \
+    --model models/qwen2.5-0.5b-instruct-q4_k_m.gguf \
+    -ngl 99 -n 32 -p "Hello" \
+    --leaninfer-profile \
+    2>&1 | grep -E "rope|norm|add" | head -20
+```
+
+If small ops show >10 µs GPU overhead, add `ggml_backend_sched_set_op_offload`
+calls in `leaninfer-metal.mm:leaninfer_metal_init()` to pin them to CPU:
+
+```cpp
+// In leaninfer_metal_init(), after queue creation:
+// Pin small ops to CPU (adjust thresholds based on tile_sweep results)
+ggml_backend_t cpu_backend = ggml_backend_cpu_init();
+// Route norm and rope to CPU — they're <1% of compute and have GPU dispatch overhead
+ggml_backend_sched_set_op_offload(llama_get_sched(li->llama_ctx), GGML_OP_RMS_NORM, false);
+ggml_backend_sched_set_op_offload(llama_get_sched(li->llama_ctx), GGML_OP_ROPE,     false);
+```
+
+Note: `llama_get_sched()` needs to be added to `llama.h` as a one-liner returning
+`ctx->sched` — same pattern as Step 3.
+
+##### Step 8 — Record results and mark done
+
+Write measured numbers into Phase 2b benchmark results below, then change the
+status of each pending row in the table above from `🔜 Pending M2` to `✅ Done`.
+Update `Status:` at the top of this file.
+
+---
+
+##### Phase 2b Benchmark Results
+
+> Fill in on M2 Mac after completing Steps 1–7.
+
+| Metric | Baseline (no fusion) | Post-fusion | Delta |
+|--------|---------------------|-------------|-------|
+| Decode tok/s (0.5B, M2) | TBD | TBD | TBD |
+| Prefill tok/s (0.5B, M2) | TBD | TBD | TBD |
+| Decode tok/s (9B, M2) | TBD | TBD | TBD |
+| Prefill tok/s (9B, M2) | TBD | TBD | TBD |
+| Best f32 tile (M=1) | TBD | — | — |
+| Best f16 tile (M=1) | TBD | — | — |
+| Best f16 tile (M=32) | TBD | — | — |
 
 ### Phase 3: Speed & Intelligence
 
 | Component | Status | Location |
 |-----------|--------|----------|
-| Reasoning-aware speculative decoding | ⬜ Not started | — |
-| Fused DeltaNet block (proj + state + output) | ⬜ Not started | Novel — CUDA + Metal (see §4.4b) |
-| Fused FFN block (norm + gate + SiLU + up + down) | ⬜ Not started | CUTLASS epilogues (CUDA), cooperative tensors (Metal) |
-| RMSNorm + projection fusion | ⬜ Not started | Both platforms, medium complexity |
-| Default runtime repacking (-rtr) | ⬜ Not started | — |
-| Predictive expert prefetch | ⬜ Not started | — |
-| Dynamic CPU/GPU operator routing | ⬜ Not started | — |
+| Reasoning-aware speculative decoding (3a) | ✅ Done | `examples/main/main.cpp` + `common/speculative.cpp` |
+| Predictive expert prefetch (3b) | ✅ Done | `src/llama.cpp` + `src/llama-context.h` |
+| RMSNorm + projection fusion (3c) | ✅ Done | Inherited (`ggml_fused_rms_norm`) + `--kv-compress` |
+| Fused DeltaNet block (proj + state + output) | 🔜 Deferred | CUDA + Metal — cloud GPU / M2 Mac |
+| Fused FFN block (norm + gate + SiLU + up + down) | 🟡 Partial | Kernel written (`leaninfer-fused.metal`); eval hook pending M2 |
+| Default runtime repacking (3d) | ✅ Done | `common/common.cpp` + `examples/main/main.cpp` |
+| Dynamic CPU/GPU operator routing | 🟡 Partial | API designed; `ggml_backend_sched_set_op_offload` hook pending M2 |
+
+**Phase 3d notes:**
+- `--auto-rtr`: before model load, checks model_file_size × 2.5 ≤ 80% of total RAM. If yes, auto-sets `--no-mmap -rtr` (IQK interleaved weight repacking). On OLMoE (3.9GB, 27.2GB RAM): 113 tensors repacked, +14.5% prefill, +1.1% decode, +1.3s one-time load.
+- Vulkan GPU tested on Radeon 680M (RDNA2 integrated): 8× SLOWER than CPU — no matrix cores in GGML Vulkan shaders, `int dot: 0`. CPU-only is optimal on this hardware.
+- Dynamic CPU/GPU routing deferred to Metal (Phase 2b): Apple Silicon unified memory makes GPU routing near-free; `int dot`, matrix cores, and Neural Engine are all available there.
+
+**Phase 3c notes:**
+- `ggml_fused_rms_norm(x, gamma)` already fuses RMSNorm + scale in one kernel (eliminates write+read of intermediate). ik_llama.cpp uses this in `llm_build_norm` whenever `type == LLM_NORM_RMS && mw`. No additional work needed.
+- Full norm+matmul kernel fusion would save <0.1% on CPU (norms are <1% of compute)
+- Added `--kv-compress` shorthand: sets `--cache-type-k q8_0 --cache-type-v q8_0`. Saves ~47% KV memory, +4% decode speed at 700+ token contexts
+
+**Phase 3b notes:**
+- `--expert-prefetch N`: after layer il's top-k gating, issues `madvise(WILLNEED)` on the selected experts in layers il+1..il+N (expert locality heuristic)
+- Warm cache (`expert_prefetch_warm_cache[layer * n_experts + eid]`): once an expert's first page is confirmed resident, marks it warm and skips all future mincore+madvise syscalls — zero overhead on warm models
+- On OLMoE (2GB, fits in 32GB RAM): cache entries = 1024 (16 × 64), all warm after first decode, subsequent tokens have no overhead
+- Benefit applies to memory-constrained deployments (e.g., 70B model on 24GB): prefetch concurrent with compute in current layer
+
+**Phase 3a notes:**
+- ngram-cache self-speculative: no draft model, builds n-gram table from growing context
+- Fixed upstream bug: `common_ngram_cache_update` was called with only new tokens (not full context), so incremental updates added 0 n-gram entries. Fixed in `common/speculative.cpp` — now passes full context with `nnew` count.
+- Fixed: `llama_batch_get_one` only marks last-token logits; spec batch needs all-positions logits. Fixed in `examples/main/main.cpp` — custom `llama_batch_init` for spec batches.
+- Reasoning-aware params: inside `<think>` → n_max=16, p_min=0.5 (aggressive); outside → n_max=8 (conservative)
+- Acceptance rate scales with output repetitiveness: ~18% on arithmetic patterns, ~3% on varied code generation — expected behavior
 
 ---
 

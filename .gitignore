@@ -8,6 +8,10 @@ build/
 # Upstream source (managed via subtree)
 upstream/
 
+# Generated logs
+main.log
+profiles/*.log
+
 # Models and weights
 *.gguf
 *.bin
