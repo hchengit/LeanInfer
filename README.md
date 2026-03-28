@@ -1,6 +1,6 @@
 # LeanInfer
 
-**Purpose-built inference runtime for 8-27B reasoning models on consumer hardware.**
+**Purpose-built inference runtime for 8-27B reasoning models, including Qwen 3.5 hybrid models, on consumer hardware.**
 
 A focused fork of [ik_llama.cpp](https://github.com/ikawrakow/ik_llama.cpp), incorporating key ideas from [PowerInfer](https://github.com/Tiiny-AI/PowerInfer) and targeted optimizations for chain-of-thought reasoning workloads.
 
@@ -17,6 +17,7 @@ LeanInfer targets **one thing well**: running 8-27B reasoning models on 16-32 GB
 ## Target Hardware
 
 - x86-64 CPUs (AVX2+) + NVIDIA GPUs (CUDA)
+- Mac M1-M5: TensorOp and Cooperative Tensor 
 - 16-32 GB system RAM
 - Consumer GPUs (RTX 3060-4090, 8-24 GB VRAM)
 
