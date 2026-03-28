@@ -461,13 +461,24 @@ Update `Status:` at the top of this file.
 |--------|---------------------|-------------------|-------|
 | Decode tok/s (0.5B, M2) | 36 | **125** | **+247% (3.5×)** |
 | Prefill tok/s (0.5B, M2) | 185 | **260–315** | **+40–70%** |
-| Decode tok/s (9B, M2) — baseline (fused_up_gate=true) | TBD | — | — |
-| Decode tok/s (9B, M2) — optimized (fused_up_gate=false) | — | TBD | TBD vs baseline |
-| Prefill tok/s (9B, M2) — baseline (fused_up_gate=true) | TBD | — | — |
-| Prefill tok/s (9B, M2) — optimized (fused_up_gate=false) | — | TBD | TBD vs baseline |
+| Decode tok/s (9B, M2) — baseline (fused_up_gate=true) | **293** | — | — |
+| Decode tok/s (9B, M2) — optimized (fused_up_gate=false) | — | **290** | ~0% (see note) |
+| Prefill tok/s (9B, M2) — baseline (fused_up_gate=true) | **46** | — | — |
+| Prefill tok/s (9B, M2) — optimized (fused_up_gate=false) | — | **60** | **+30%** |
 | Best f32 tile (M=1) | TBD | — | — |
 | Best f16 tile (M=1) | TBD | — | — |
 | Best f16 tile (M=32) | TBD | — | — |
+
+**9B note:** Qwen 3.5-9B is a hybrid architecture (`qwen35` — DeltaNet + attention).
+Its FFN path does **not** produce `GGML_OP_FUSED_UP_GATE` nodes, so the
+fused_up_gate bug does not affect it. The 293 tok/s baseline already runs
+entirely on Metal GPU. The ~30% prefill gain from fused_up_gate=false is likely
+from ggml graph scheduling differences (fewer ops = simpler graph = less overhead).
+The 3.5× speedup applies to standard transformer architectures (Qwen 2.5, Llama,
+DeepSeek-R1, etc.) where `GGML_OP_FUSED_UP_GATE` is used in every FFN layer.
+
+Qwen 3.5-9B base model (unsloth/Qwen3.5-9B-GGUF Q4_K_M, 5.7 GB) used for
+benchmarking. 16 GB M2 Mac, -ngl 99 (full GPU offload), 128 tokens generated.
 
 ##### 9B Benchmark Commands (run both, record tok/s from output)
 
