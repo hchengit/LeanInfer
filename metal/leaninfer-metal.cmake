@@ -25,8 +25,13 @@ elseif (LEANINFER_METAL)
     # Expose LEANINFER_METAL define so #ifdef guards compile in.
     target_compile_definitions(llama PUBLIC LEANINFER_METAL)
 
-    # Allow leaninfer-metal.mm to find leaninfer-metal.h via #include "leaninfer-metal.h".
-    target_include_directories(llama PRIVATE "${_LI_METAL_DIR}")
+    # Allow leaninfer-metal.h to be found by llama and all linking targets.
+    target_include_directories(llama PUBLIC "${_LI_METAL_DIR}")
+
+    # Link Metal + Foundation frameworks (leaninfer-metal.mm uses Metal API directly).
+    find_library(METAL_FRAMEWORK    Metal)
+    find_library(FOUNDATION_FRAMEWORK Foundation)
+    target_link_libraries(llama PRIVATE ${METAL_FRAMEWORK} ${FOUNDATION_FRAMEWORK})
 
     # Copy leaninfer-fused.metal next to the binary so the runtime can JIT-compile it.
     configure_file(

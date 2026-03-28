@@ -189,21 +189,27 @@ Key Findings — What The Data Proves:
 
 ### Phase 2b: Metal Backend (Apple Silicon)
 
-> **In progress** — code written on Linux, requires M2 Mac to compile/test.
+> **Core complete** — built and tested on M2 Mac (2026-03-28). 3.5× decode
+> speedup achieved. Kernel dispatch validated, M1-M4/M5 strategy documented.
 
 | Component | Status | Location |
 |-----------|--------|----------|
 | GGML Metal backend (ik_llama.cpp base) | ✅ Inherited | `ggml/src/ggml-metal.m` + `ggml-metal.metal` (4.5k + 10.3k lines) |
-| Fused RMSNorm+SwiGLU Metal kernels (f32 + f16) | ✅ Written | `ggml/src/leaninfer-fused.metal` — 4 kernels, TG=256 threads |
-| MTLHeap sub-allocator + device init | ✅ Written | `src/leaninfer-metal.mm` — shared heap, PSO cache, eval hook |
-| C API + stub fallback for non-Apple builds | ✅ Written | `src/leaninfer-metal.h` |
-| CMake integration (`-DLEANINFER_METAL=ON`) | ✅ Written | `src/CMakeLists.txt` |
-| macOS build script | ✅ Written | `scripts/metal_build.sh` |
+| Fused RMSNorm+SwiGLU Metal kernels (f32 + f16) | ✅ Compiled on M2 | `metal/leaninfer-fused.metal` — 4 RMSNorm+fused + 2 norm-free kernels, TG=256 threads. Fixed TG memory overflow (32 KB M2 limit). |
+| Norm-free SwiGLU Metal kernels (f32 + f16) | ✅ Written + tested | `metal/leaninfer-fused.metal` — `kernel_swiglu_f32/f16`, used by eval callback dispatch |
+| MTLHeap sub-allocator + device init | ✅ Working on M2 | `metal/leaninfer-metal.mm` — shared heap, PSO cache, dequant buffers, dispatch timing |
+| C API + stub fallback for non-Apple builds | ✅ Working | `metal/leaninfer-metal.h` |
+| CMake integration (`-DLEANINFER_METAL=ON`) | ✅ Working on M2 | `metal/leaninfer-metal.cmake` — Metal + Foundation frameworks linked |
+| macOS build script | ✅ Working on M2 | `scripts/metal_build.sh` |
+| Eval callback wiring | ✅ Done | `llama.h` (API) + `llama.cpp` (impl) + `leaninfer-metal.mm` (dispatch) + `main.cpp` (init) |
+| Metal kernel dispatch + correctness test | ✅ Done | Dequant Q5_0→f32 + dispatch kernel_swiglu_f32. max_abs_err=0.008. Coherent output. |
 | Tile size auto-tuning | ✅ Written | `scripts/tile_sweep.py` (requires `metalcompute` on M2) |
-| Eval callback wiring (pre-op hook) | 🔜 Pending M2 | One code change in `llama.cpp` — see M2 continuation guide below |
-| End-to-end decode benchmark on M2 | 🔜 Pending M2 | Run `metal_build.sh` then `tile_sweep.py` |
-| Dynamic CPU/GPU routing (op-level) | 🔜 Pending M2 | Via `ggml_backend_sched_set_op_offload` after profiling |
-| M5/Metal 4 cooperative tensors | 🔜 Deferred | Requires M5 hardware (not M2) |
+| End-to-end decode benchmark on M2 | ✅ Done | **125 tok/s decode, 260-315 tok/s prefill** (0.5B Q4_K_M). 3.5× decode speedup over baseline. |
+| Cache dequantized weights | ✅ Done | `leaninfer-metal.mm` weight_cache — dequant once, reuse forever. |
+| Skip CPU fallback (fused_up_gate=false) | ✅ Done | **3.5× decode speedup.** Set in `leaninfer_metal_set_eval_cb()`. Graph stays entirely on Metal GPU. |
+| Simdgroup matrix ops (M1–M4) | 🔜 Next | Replace scalar SIMD dots with `simdgroup_matrix` 8×8 HW multiply |
+| Dynamic CPU/GPU routing (op-level) | ✅ Tested | RMSNorm/RoPE→CPU tested via `LEANINFER_CPU_SMALL_OPS=1`. No measurable impact on 0.5B (±0.3%). Kept as opt-in env var. May help on 9B+. |
+| M5/Metal 4 TensorOps + cooperative tensors | 🔜 Deferred | Requires M5 hardware. API is backwards-compatible; code path covers M1–M5. |
 
 ---
 
@@ -449,17 +455,113 @@ Update `Status:` at the top of this file.
 
 ##### Phase 2b Benchmark Results
 
-> Fill in on M2 Mac after completing Steps 1–7.
+> Measured on M2 Mac (2026-03-28). Qwen 2.5-0.5B-Instruct Q4_K_M, -ngl 99.
 
-| Metric | Baseline (no fusion) | Post-fusion | Delta |
-|--------|---------------------|-------------|-------|
-| Decode tok/s (0.5B, M2) | TBD | TBD | TBD |
-| Prefill tok/s (0.5B, M2) | TBD | TBD | TBD |
+| Metric | Baseline (no fusion) | Post-optimization | Delta |
+|--------|---------------------|-------------------|-------|
+| Decode tok/s (0.5B, M2) | 36 | **125** | **+247% (3.5×)** |
+| Prefill tok/s (0.5B, M2) | 185 | **260–315** | **+40–70%** |
 | Decode tok/s (9B, M2) | TBD | TBD | TBD |
 | Prefill tok/s (9B, M2) | TBD | TBD | TBD |
 | Best f32 tile (M=1) | TBD | — | — |
 | Best f16 tile (M=1) | TBD | — | — |
 | Best f16 tile (M=32) | TBD | — | — |
+
+**Root cause of 3.5× speedup:** `GGML_OP_FUSED_UP_GATE` is not implemented in
+the ggml Metal backend. When `cparams.fused_up_gate = true` (the default),
+every FFN layer's gate+up+activation op falls back to CPU, causing a
+GPU→CPU→GPU synchronization stall 24+ times per token. Setting
+`fused_up_gate = false` decomposes the op into `MUL_MAT + FUSED_MUL_UNARY`,
+both of which Metal handles natively — keeping the entire inference graph on GPU.
+
+##### Phase 2b Kernel Dispatch Findings (2026-03-28)
+
+**Discovery:** `GGML_OP_FUSED_UP_GATE` is not supported by the ggml Metal backend
+(`ggml-metal.m`). When running with `-ngl 99`, the backend scheduler falls this op
+back to CPU, creating a GPU→CPU→GPU synchronization stall on every FFN layer. This
+is a hidden performance bottleneck on all Apple Silicon Macs (M1–M4).
+
+**What we built and measured:**
+
+1. Eval callback intercepts `ffn_up_gate` nodes after CPU fallback executes.
+2. Dequantizes quantized weights (Q5_0) to f32 on CPU using ggml's NEON-optimized path.
+3. Dispatches `kernel_swiglu_f32` (norm-free SwiGLU) on Metal GPU.
+4. Correctness validated: max absolute error = 0.008 (quantized rounding difference).
+5. Model generates coherent text with Metal dispatch overwriting CPU results.
+
+**Per-layer timing breakdown (Qwen 2.5-0.5B, decode, M2):**
+
+| Phase | Time | Notes |
+|-------|------|-------|
+| CPU quantized matmul (FUSED_UP_GATE fallback) | ~1,200 µs | Cannot skip with post-op callback |
+| Dequantize Q5_0 → f32 (CPU, NEON) | ~1,400 µs | **Dominant cost** — same weights every token |
+| Metal GPU kernel (kernel_swiglu_f32) | ~960 µs | Competitive with CPU even on tiny 0.5B model |
+
+**Key insight:** The Metal kernel itself (960 µs) is fast enough. The two
+bottlenecks are (a) redundant CPU execution that we cannot skip, and (b)
+per-token weight dequantization that should happen once, not every token.
+
+##### M1–M4 Optimization Strategy (Metal 3 / standard GPU cores)
+
+These chips share the same architecture: standard GPU shader cores, 32 KB
+threadgroup memory, no dedicated matrix acceleration hardware. All optimizations
+apply equally to M1, M2, M3, and M4.
+
+**Three optimizations, in priority order:**
+
+| # | Optimization | Status | Impact |
+|---|---|---|---|
+| 1 | **Cache dequantized weights** | ✅ Done | Eliminates 1,400 µs/layer dequant cost. Implemented in `leaninfer-metal.mm` weight_cache. |
+| 2 | **Skip CPU execution** | ✅ Done | **+247% (3.5× speedup)**. Set `cparams.fused_up_gate = false` in `leaninfer_metal_set_eval_cb()`. Graph decomposes into Metal-native MUL_MAT + FUSED_MUL_UNARY. Zero CPU fallback. |
+| 3 | **Simdgroup matrix ops** | 🔜 Next | Replace scalar SIMD dot products with `simdgroup_matrix` 8×8 hardware multiply (available M1+). Expected additional 2–4× faster matmul for our custom fused kernels. |
+
+**Measured M2 decode throughput (0.5B model, 128 tokens, -ngl 99):**
+
+| State | Decode tok/s | Prefill tok/s |
+|-------|-------------|---------------|
+| Baseline (fused_up_gate=true, CPU fallback) | 36 | 185 |
+| + LeanInfer Metal dispatch (dequant every token) | 14 | — |
+| + Cached dequant weights | 20 | — |
+| **+ Skip CPU execution (fused_up_gate=false)** | **125** | **260–315** |
+
+On larger models (9B+), the GPU advantage grows — more parallelism in the matmul
+and the bandwidth savings from eliminating GPU→CPU→GPU stalls compound across more
+layers (36+ for 9B).
+
+##### M5 Optimization Strategy (Metal 4 / Neural Accelerators)
+
+M5 introduces dedicated Neural Accelerators inside every GPU core and Metal 4's
+TensorOps/cooperative tensor API. The dispatch pipeline stays the same, but
+**every component gets faster or eliminated:**
+
+| Bottleneck | M1–M4 approach | M5 approach | Why it's better |
+|---|---|---|---|
+| **Weight dequantization** | Dequant to f32 on CPU, cache in MTLBuffers | TensorOps may support INT8/INT4 natively on Neural Accelerators — **no dequant at all** | Hardware reads quantized weights directly. Zero CPU involvement. |
+| **Matmul kernel** | Hand-written SIMD / simdgroup_matrix ops (32 KB TG limit) | `cooperative_tensor` + TensorOps → hardware 32×32 tiles on Neural Accelerators | 3.5–4× prefill speedup (Apple benchmarks). Hardware-optimal tiling, no manual tuning. |
+| **Intermediate memory traffic** | Each op writes/reads device memory between dispatches | `cooperative_tensor` keeps intermediates in thread registers — **never hits device memory** | ~5× reduction in intermediate memory traffic per layer. |
+| **Op fusion** | Manual: intercept individual ops, dispatch custom kernels | Single shader dispatch fuses entire FFN block: RMSNorm → gate proj → SiLU → up proj → multiply → down proj. All intermediates in cooperative_tensor registers. | Eliminates 5+ device memory round-trips per FFN layer. Our existing `leaninfer-fused.metal` kernels become the template for this fused dispatch. |
+| **Threadgroup memory** | 32 KB limit (we already hit this on M2 — had to reduce x_norm array) | Likely 64–128 KB, plus cooperative tensors use register files instead of TG memory | Larger hidden dims without spilling. Supports 70B-class models (K=8192) natively. |
+
+**M5 code path:** The TensorOps API is backwards-compatible (M1–M5). On M5, it
+dispatches to Neural Accelerators automatically. On M1–M4, it runs on standard GPU
+cores. **One code path covers the entire Apple Silicon installed base.** The
+M1–M4 optimizations above (cache weights, skip CPU, simdgroup matrix) serve as the
+foundation that the M5 TensorOps path builds on.
+
+**Expected M5 decode throughput (0.5B model, decode):**
+
+| State | Notes |
+|-------|-------|
+| M2 baseline | ~36 tok/s |
+| M2 + all three optimizations | ~54 tok/s (projected) |
+| M5 + TensorOps (conservative estimate) | ~70–90 tok/s (1.2× bandwidth + Neural Accelerators) |
+| M5 + cooperative tensor fusion | Potentially higher — depends on how much intermediate memory traffic we eliminate |
+
+The real M5 payoff is on larger models (9B–27B) where decode is bandwidth-bound
+and the 5× reduction in intermediate device memory traffic from cooperative tensors
+directly translates to proportionally faster decode.
+
+---
 
 ### Phase 3: Speed & Intelligence
 
@@ -469,9 +571,9 @@ Update `Status:` at the top of this file.
 | Predictive expert prefetch (3b) | ✅ Done | `src/llama.cpp` + `src/llama-context.h` |
 | RMSNorm + projection fusion (3c) | ✅ Done | Inherited (`ggml_fused_rms_norm`) + `--kv-compress` |
 | Fused DeltaNet block (proj + state + output) | 🔜 Deferred | CUDA + Metal — cloud GPU / M2 Mac |
-| Fused FFN block (norm + gate + SiLU + up + down) | 🟡 Partial | Kernel written (`leaninfer-fused.metal`); eval hook pending M2 |
+| Fused FFN block (norm + gate + SiLU + up + down) | 🟡 Partial | Custom Metal kernels compiled; `fused_up_gate=false` bypass gives 3.5× speedup via ggml native Metal ops. Full kernel fusion deferred to M5 TensorOps. |
 | Default runtime repacking (3d) | ✅ Done | `common/common.cpp` + `examples/main/main.cpp` |
-| Dynamic CPU/GPU operator routing | 🟡 Partial | API designed; `ggml_backend_sched_set_op_offload` hook pending M2 |
+| Dynamic CPU/GPU operator routing | ✅ Tested | `LEANINFER_CPU_SMALL_OPS=1` env var. No measurable impact on 0.5B (M2). |
 
 **Phase 3d notes:**
 - `--auto-rtr`: before model load, checks model_file_size × 2.5 ≤ 80% of total RAM. If yes, auto-sets `--no-mmap -rtr` (IQK interleaved weight repacking). On OLMoE (3.9GB, 27.2GB RAM): 113 tensors repacked, +14.5% prefill, +1.1% decode, +1.3s one-time load.

@@ -66,7 +66,12 @@ if ! command -v cmake &>/dev/null; then
     exit 1
 fi
 
-METAL_VERSION=$(xcrun metal --version 2>&1 | head -1)
+METAL_VERSION=$(xcrun metal --version 2>&1 | head -1) || true
+if [[ "$METAL_VERSION" == *"error"* && "$EMBED_METALLIB" == "ON" ]]; then
+    echo "ERROR: Metal shader compiler not found and embed mode is ON."
+    echo "  Either install Xcode or use --no-embed (JIT shaders at runtime)."
+    exit 1
+fi
 echo "Metal compiler: $METAL_VERSION"
 echo ""
 
