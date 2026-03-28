@@ -461,11 +461,47 @@ Update `Status:` at the top of this file.
 |--------|---------------------|-------------------|-------|
 | Decode tok/s (0.5B, M2) | 36 | **125** | **+247% (3.5×)** |
 | Prefill tok/s (0.5B, M2) | 185 | **260–315** | **+40–70%** |
-| Decode tok/s (9B, M2) | TBD | TBD | TBD |
-| Prefill tok/s (9B, M2) | TBD | TBD | TBD |
+| Decode tok/s (9B, M2) — baseline (fused_up_gate=true) | TBD | — | — |
+| Decode tok/s (9B, M2) — optimized (fused_up_gate=false) | — | TBD | TBD vs baseline |
+| Prefill tok/s (9B, M2) — baseline (fused_up_gate=true) | TBD | — | — |
+| Prefill tok/s (9B, M2) — optimized (fused_up_gate=false) | — | TBD | TBD vs baseline |
 | Best f32 tile (M=1) | TBD | — | — |
 | Best f16 tile (M=1) | TBD | — | — |
 | Best f16 tile (M=32) | TBD | — | — |
+
+##### 9B Benchmark Commands (run both, record tok/s from output)
+
+**Test A — Baseline (default, fused_up_gate=true, triggers CPU fallback):**
+
+```bash
+./build-metal/bin/llama-cli \
+    --model models/qwen35-9b-instruct-q4_k_m.gguf \
+    -ngl 99 --kv-compress \
+    -n 128 \
+    -p "Write a short story about a robot." \
+    2>&1 | grep -E "eval time|prompt eval time|tok/s"
+```
+
+**Test B — Optimized (fused_up_gate=false, full Metal graph):**
+
+```bash
+./build-metal/bin/llama-cli \
+    --model models/qwen35-9b-instruct-q4_k_m.gguf \
+    -ngl 99 --kv-compress \
+    --fused-up-gate false \
+    -n 128 \
+    -p "Write a short story about a robot." \
+    2>&1 | grep -E "eval time|prompt eval time|tok/s"
+```
+
+> **Note:** If `--fused-up-gate` is not a CLI flag, the setting is in
+> `leaninfer_metal_set_eval_cb()` in `leaninfer-metal.mm`. Rebuild with
+> the flag toggled and re-run. The key line is `cparams.fused_up_gate = false`.
+>
+> Run each test 3 times and take the median. On 9B (Q4_K_M ~5 GB), the M2's
+> 100 GB/s unified memory bandwidth becomes the bottleneck — expect a smaller
+> multiplier than the 3.5× seen on 0.5B, but still a significant win since
+> the CPU fallback stall scales with model depth (32 layers on 9B vs 24 on 0.5B).
 
 **Root cause of 3.5× speedup:** `GGML_OP_FUSED_UP_GATE` is not implemented in
 the ggml Metal backend. When `cparams.fused_up_gate = true` (the default),
