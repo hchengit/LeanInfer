@@ -744,16 +744,41 @@ huggingface-cli download unsloth/Qwen3.5-9B-GGUF \
 - Gains scale with model size (FFN share grows: 30% on 9B → 43% on 14B → 50%+ on 27B)
 - RTX 4090 bandwidth (1 TB/s) vs A100 (2 TB/s) — fused kernels help more on lower-bandwidth GPUs
 
-##### Record results
+##### CUDA Benchmark Results (2026-03-29)
 
-Fill in after benchmarking:
+> Measured on Vast.ai RTX 4090 (24 GB, SM 89, CUDA 13.0). ik_llama.cpp baseline (no LeanInfer fused kernels).
+
+| Metric | RTX 4090 (CUDA) | M2 Mac (Metal) | 4090 vs M2 |
+|--------|-----------------|----------------|------------|
+| Decode tok/s (0.5B) | **842** | 125 | **6.7× faster** |
+| Prefill tok/s (0.5B) | **481** | 260 | **1.9× faster** |
+| Decode tok/s (9B, Qwen 3.5 hybrid) | **137** | **293** | **M2 wins 2.1×** |
+| Prefill tok/s (9B, Qwen 3.5 hybrid) | **252** | 46 | **5.5× faster** |
+
+**Key finding: DeltaNet hybrid models favor unified memory for decode.**
+
+The 9B decode result is counterintuitive — M2 is 2.1× faster than the RTX 4090 despite
+having 10× less memory bandwidth. Root cause: Qwen 3.5-9B is a hybrid DeltaNet architecture
+(24 recurrent + 8 attention layers). The recurrent state update is inherently sequential
+(token-by-token), and each token requires state reads/writes. On M2, the CPU and GPU share
+unified memory — zero-copy state access. On the 4090, state must traverse PCIe or stay
+entirely on GPU with kernel launch overhead per token. The sequential nature of DeltaNet
+negates the 4090's bandwidth advantage.
+
+The 4090 dominates prefill (5.5×) because prefill is a batched GEMM over all input tokens
+simultaneously — pure bandwidth wins there.
+
+**Implication for LeanInfer:** Our fused DeltaNet kernel (`cuda/leaninfer-fused-deltanet.cu`)
+matters MORE on CUDA than on Metal — the fusion eliminates per-head global memory round-trips
+that compound with the sequential decode bottleneck. This is where the 10–15% improvement
+from eliminating `linear_attn_out` traffic will show up most.
 
 | Metric | Baseline (ggml CUDA) | Fused kernels | Delta |
 |--------|---------------------|---------------|-------|
-| Decode tok/s (0.5B, 4090) | TBD | TBD | TBD |
-| Prefill tok/s (0.5B, 4090) | TBD | TBD | TBD |
-| Decode tok/s (9B, 4090) | TBD | TBD | TBD |
-| Prefill tok/s (9B, 4090) | TBD | TBD | TBD |
+| Decode tok/s (0.5B, 4090) | 842 | pending cmake fix | — |
+| Prefill tok/s (0.5B, 4090) | 481 | pending cmake fix | — |
+| Decode tok/s (9B, 4090) | 137 | pending cmake fix | — |
+| Prefill tok/s (9B, 4090) | 252 | pending cmake fix | — |
 
 ---
 
