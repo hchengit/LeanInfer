@@ -660,24 +660,28 @@ directly translates to proportionally faster decode.
 
 ##### Recommended providers
 
-| Provider | GPU | VRAM | Price | Notes |
-|---|---|---|---|---|
-| **Vast.ai** | RTX 4090 | 24 GB | ~$0.20/hr | Cheapest. Community GPUs. Spot pricing. Best for quick tests. |
-| **RunPod** | RTX 4090 | 24 GB | ~$0.40/hr | More reliable. Docker templates. |
-| **Lambda** | A10G | 24 GB | ~$0.60/hr | Clean Ubuntu, good for dev. |
-| **Vast.ai** | A100 40GB | 40 GB | ~$0.80/hr | Cheapest A100. HBM2e = 2 TB/s. For 14B+ models. |
-| **RunPod** | A100 80GB | 80 GB | ~$1.60/hr | Fits 27B. Best for serious benchmarking. |
+| Provider | GPU | VRAM | SM | Price | Notes |
+|---|---|---|---|---|---|
+| **Vast.ai** | **RTX 5060 Ti** | 16 GB | 120 | ~$0.07/hr | Cheapest option. Blackwell. 16 GB fits 9B Q4_K_M (5.7 GB). **Requires CUDA ≥ 12.8.** |
+| **Vast.ai** | RTX 4090 | 24 GB | 89 | ~$0.20/hr | Ada Lovelace. More VRAM headroom. Wider CUDA toolkit support. |
+| **RunPod** | RTX 4090 | 24 GB | 89 | ~$0.40/hr | More reliable. Docker templates. |
+| **Lambda** | A10G | 24 GB | 86 | ~$0.60/hr | Clean Ubuntu, good for dev. |
+| **Vast.ai** | A100 40GB | 40 GB | 80 | ~$0.80/hr | HBM2e = 2 TB/s. For 14B+ models. |
+| **RunPod** | A100 80GB | 80 GB | 80 | ~$1.60/hr | Fits 27B. Best for serious benchmarking. |
 
-**Recommendation:** Vast.ai RTX 4090 (~$0.20/hr). Fits Qwen 3.5-9B Q4_K_M (5.7 GB) with room to spare. Ada Lovelace SM 89 — FP16 tensor cores. Total cost: ~$1–2 for a full session.
+**Recommendation:** Vast.ai RTX 5060 Ti (~$0.07/hr). 16 GB VRAM fits Qwen 3.5-9B Q4_K_M (5.7 GB). Blackwell SM 120 with FP16 tensor cores. Total cost: <$0.50 for a full session. Verify `nvcc --version` shows CUDA ≥ 12.8 (required for SM 120). Fall back to RTX 4090 if the toolkit is too old.
 
 ##### Quick start (Vast.ai)
 
 1. Sign up at **vast.ai**, add $5 credit
-2. Search instances: filter by **RTX 4090**, sort by price, select cheapest
+2. Search instances: filter by **RTX 5060 Ti** (or RTX 4090), sort by price, select cheapest
 3. Pick the **PyTorch** docker template (has CUDA toolkit pre-installed)
 4. SSH in, then:
 
 ```bash
+# Verify CUDA toolkit version (SM 120 needs ≥ 12.8; SM 89 needs ≥ 11.8)
+nvcc --version
+
 # Install build deps
 sudo apt update && sudo apt install -y cmake git
 
@@ -685,7 +689,8 @@ sudo apt update && sudo apt install -y cmake git
 git clone https://github.com/hchengit/LeanInfer.git && cd LeanInfer
 ./scripts/setup_upstream.sh
 
-# Build with CUDA + fused kernels (auto-detects SM 89 for 4090)
+# Build with CUDA + fused kernels (auto-detects GPU architecture)
+# For 5060 Ti: --arch=120   For 4090: --arch=89   Or omit for auto-detect
 ./scripts/cuda_build.sh
 
 # Download test model
