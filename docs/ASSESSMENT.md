@@ -652,6 +652,106 @@ directly translates to proportionally faster decode.
 | Default runtime repacking (3d) | ✅ Done | `common/common.cpp` + `examples/main/main.cpp` |
 | Dynamic CPU/GPU operator routing | ✅ Tested | `LEANINFER_CPU_SMALL_OPS=1` env var. No measurable impact on 0.5B (M2). |
 
+---
+
+#### CUDA Cloud GPU Testing Guide
+
+> **Read this when ready to compile and benchmark the fused CUDA kernels.**
+
+##### Recommended providers
+
+| Provider | GPU | VRAM | Price | Notes |
+|---|---|---|---|---|
+| **Vast.ai** | RTX 4090 | 24 GB | ~$0.20/hr | Cheapest. Community GPUs. Spot pricing. Best for quick tests. |
+| **RunPod** | RTX 4090 | 24 GB | ~$0.40/hr | More reliable. Docker templates. |
+| **Lambda** | A10G | 24 GB | ~$0.60/hr | Clean Ubuntu, good for dev. |
+| **Vast.ai** | A100 40GB | 40 GB | ~$0.80/hr | Cheapest A100. HBM2e = 2 TB/s. For 14B+ models. |
+| **RunPod** | A100 80GB | 80 GB | ~$1.60/hr | Fits 27B. Best for serious benchmarking. |
+
+**Recommendation:** Vast.ai RTX 4090 (~$0.20/hr). Fits Qwen 3.5-9B Q4_K_M (5.7 GB) with room to spare. Ada Lovelace SM 89 — FP16 tensor cores. Total cost: ~$1–2 for a full session.
+
+##### Quick start (Vast.ai)
+
+1. Sign up at **vast.ai**, add $5 credit
+2. Search instances: filter by **RTX 4090**, sort by price, select cheapest
+3. Pick the **PyTorch** docker template (has CUDA toolkit pre-installed)
+4. SSH in, then:
+
+```bash
+# Install build deps
+sudo apt update && sudo apt install -y cmake git
+
+# Clone LeanInfer + upstream fork
+git clone https://github.com/hchengit/LeanInfer.git && cd LeanInfer
+./scripts/setup_upstream.sh
+
+# Build with CUDA + fused kernels (auto-detects SM 89 for 4090)
+./scripts/cuda_build.sh
+
+# Download test model
+pip install huggingface-hub
+huggingface-cli download Qwen/Qwen2.5-0.5B-Instruct-GGUF \
+    qwen2.5-0.5b-instruct-q4_k_m.gguf --local-dir models/
+```
+
+##### Benchmark sequence
+
+**Test 1 — Baseline (no fused kernels, standard ggml CUDA):**
+
+```bash
+./build-cuda/bin/llama-cli \
+    --model models/qwen2.5-0.5b-instruct-q4_k_m.gguf \
+    -ngl 99 --kv-compress -n 128 \
+    -p "Write a short story about a robot." \
+    2>&1 | grep -E "eval time|prompt eval time|tok/s"
+```
+
+**Test 2 — With fused FFN (once eval callback is wired):**
+
+Same command — the fused kernels intercept FFN dispatch automatically when `LEANINFER_CUDA=ON` is compiled in. Compare `eval tok/s` and `prompt eval tok/s` to Test 1.
+
+**Test 3 — 9B model (the real target):**
+
+```bash
+huggingface-cli download unsloth/Qwen3.5-9B-GGUF \
+    Qwen3.5-9B-Q4_K_M.gguf --local-dir models/
+
+./build-cuda/bin/llama-cli \
+    --model models/Qwen3.5-9B-Q4_K_M.gguf \
+    -ngl 99 --kv-compress -n 128 \
+    -p "Write a short story about a robot." \
+    2>&1 | grep -E "eval time|prompt eval time|tok/s"
+```
+
+**Test 4 — Profile to verify fused kernels fire:**
+
+```bash
+./build-cuda/bin/llama-cli \
+    --model models/qwen2.5-0.5b-instruct-q4_k_m.gguf \
+    -ngl 99 -n 32 -p "Hello" \
+    --leaninfer-profile 2>&1 | grep -E "ffn|delta|fused"
+```
+
+##### Expected gains (from profiling data)
+
+- **FFN fusion**: eliminates 5 global-memory round-trips per layer → **10–20% prefill, 5–15% decode** speedup on 9B+ models (FFN = 30–43% of compute)
+- **DeltaNet fusion**: eliminates per-head output writes → **3–5% decode** on hybrid models (linear_attn_out = 5.3%)
+- Gains scale with model size (FFN share grows: 30% on 9B → 43% on 14B → 50%+ on 27B)
+- RTX 4090 bandwidth (1 TB/s) vs A100 (2 TB/s) — fused kernels help more on lower-bandwidth GPUs
+
+##### Record results
+
+Fill in after benchmarking:
+
+| Metric | Baseline (ggml CUDA) | Fused kernels | Delta |
+|--------|---------------------|---------------|-------|
+| Decode tok/s (0.5B, 4090) | TBD | TBD | TBD |
+| Prefill tok/s (0.5B, 4090) | TBD | TBD | TBD |
+| Decode tok/s (9B, 4090) | TBD | TBD | TBD |
+| Prefill tok/s (9B, 4090) | TBD | TBD | TBD |
+
+---
+
 **Phase 3d notes:**
 - `--auto-rtr`: before model load, checks model_file_size × 2.5 ≤ 80% of total RAM. If yes, auto-sets `--no-mmap -rtr` (IQK interleaved weight repacking). On OLMoE (3.9GB, 27.2GB RAM): 113 tensors repacked, +14.5% prefill, +1.1% decode, +1.3s one-time load.
 - Vulkan GPU tested on Radeon 680M (RDNA2 integrated): 8× SLOWER than CPU — no matrix cores in GGML Vulkan shaders, `int dot: 0`. CPU-only is optimal on this hardware.
