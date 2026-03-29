@@ -28,7 +28,7 @@ jobs:
           restore-keys: upstream-${{ env.UPSTREAM_REF }}-
 
       - name: Setup upstream (ik_llama.cpp fork)
-        run: ./scripts/setup_upstream.sh
+        run: bash scripts/setup_upstream.sh
 
       - name: Configure (CPU, Release)
         run: |
@@ -69,7 +69,7 @@ jobs:
           restore-keys: upstream-macos-${{ env.UPSTREAM_REF }}-
 
       - name: Setup upstream (ik_llama.cpp fork)
-        run: ./scripts/setup_upstream.sh
+        run: bash scripts/setup_upstream.sh
 
       - name: Wire LeanInfer Metal into CMakeLists
         run: |
