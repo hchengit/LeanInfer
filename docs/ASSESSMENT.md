@@ -1,8 +1,8 @@
 # LeanInfer — Technical Assessment & Architecture Plan
 
 **Date:** 2026-03-24
-**Status:** Phase 3 complete (Linux/CPU) — Metal code written, pending M2 compile+test
-**Last Updated:** 2026-03-28
+**Status:** Phase 3 complete (Linux/CPU). Metal 3.5× on M2. CUDA fused kernels written, pending cloud GPU.
+**Last Updated:** 2026-03-29
 
 ---
 
@@ -647,8 +647,8 @@ directly translates to proportionally faster decode.
 | Reasoning-aware speculative decoding (3a) | ✅ Done | `examples/main/main.cpp` + `common/speculative.cpp` |
 | Predictive expert prefetch (3b) | ✅ Done | `src/llama.cpp` + `src/llama-context.h` |
 | RMSNorm + projection fusion (3c) | ✅ Done | Inherited (`ggml_fused_rms_norm`) + `--kv-compress` |
-| Fused DeltaNet block (proj + state + output) | 🔜 Deferred | CUDA + Metal — cloud GPU / M2 Mac |
-| Fused FFN block (norm + gate + SiLU + up + down) | 🟡 Partial | Custom Metal kernels compiled; `fused_up_gate=false` bypass gives 3.5× speedup via ggml native Metal ops. Full kernel fusion deferred to M5 TensorOps. |
+| Fused DeltaNet block (proj + state + output) | ✅ Written | `cuda/leaninfer-fused-deltanet.cu` — recurrent + output projection fusion (novel, no prior impl). Pending cloud GPU compile+test. |
+| Fused FFN block (norm + gate + SiLU + up + down) | ✅ Written | `cuda/leaninfer-fused-ffn.cu` (CUDA) + `metal/leaninfer-fused.metal` (Metal). 3 kernels: matmul f32, swiglu f32, swiglu f16. Metal bypass via `fused_up_gate=false` gives 3.5×. |
 | Default runtime repacking (3d) | ✅ Done | `common/common.cpp` + `examples/main/main.cpp` |
 | Dynamic CPU/GPU operator routing | ✅ Tested | `LEANINFER_CPU_SMALL_OPS=1` env var. No measurable impact on 0.5B (M2). |
 
