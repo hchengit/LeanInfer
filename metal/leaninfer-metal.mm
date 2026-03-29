@@ -52,6 +52,15 @@
 
 #include "ggml.h"  // for ggml_internal_get_type_traits, ggml_type
 
+// LeanInfer eval callback hook — declared in llama.h when the upstream fork
+// has the Phase 2b patch applied. If not yet present, provide a weak stub
+// so the Metal extension compiles (callback just won't be wired).
+extern "C" void leaninfer_metal_set_eval_cb(
+        struct llama_context              * ctx,
+        ggml_backend_sched_eval_callback    cb,
+        void                              * user_data) __attribute__((weak));
+
+
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -521,11 +530,7 @@ static bool li_compile_shaders(leaninfer_metal_context * li,
             return false;
         }
         MTLCompileOptions * opts = [[MTLCompileOptions alloc] init];
-        if (@available(macOS 15.0, *)) {
-            opts.mathMode = MTLMathModeFast;
-        } else {
-            opts.fastMathEnabled = YES;
-        }
+        opts.fastMathEnabled = YES;
         li->fused_lib = [li->device newLibraryWithSource:src_ns
                                                   options:opts
                                                     error:&error];
@@ -596,8 +601,13 @@ static bool li_install_eval_callback(leaninfer_metal_context * li) {
     // in llama.cpp (added below). The callback pointer li_eval_callback is
     // passed there.
     //
-    leaninfer_metal_set_eval_cb(li->llama_ctx, li_eval_callback, li);
-    fprintf(stderr, "leaninfer-metal: eval callback registered\n");
+    if (leaninfer_metal_set_eval_cb) {
+        leaninfer_metal_set_eval_cb(li->llama_ctx, li_eval_callback, li);
+        fprintf(stderr, "leaninfer-metal: eval callback registered\n");
+    } else {
+        fprintf(stderr, "leaninfer-metal: eval callback not available "
+                "(upstream llama.cpp missing Phase 2b hook)\n");
+    }
     return true;
 }
 
