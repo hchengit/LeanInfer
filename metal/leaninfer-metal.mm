@@ -52,13 +52,26 @@
 
 #include "ggml.h"  // for ggml_internal_get_type_traits, ggml_type
 
-// LeanInfer eval callback hook — declared in llama.h when the upstream fork
-// has the Phase 2b patch applied. If not yet present, provide a weak stub
-// so the Metal extension compiles (callback just won't be wired).
+// LeanInfer eval callback hook.
+// When the upstream fork has the Phase 2b patch (metal_eval_cb field in
+// llama_context + leaninfer_metal_set_eval_cb in llama.cpp), this resolves
+// to the real implementation at link time. Otherwise we provide a no-op
+// fallback so the Metal extension compiles on any ik_llama.cpp checkout.
+#if !defined(LEANINFER_HAS_EVAL_CB)
+static void leaninfer_metal_set_eval_cb(
+        struct llama_context              * /*ctx*/,
+        ggml_backend_sched_eval_callback    /*cb*/,
+        void                              * /*user_data*/) {
+    // no-op: upstream doesn't have the eval callback hook yet
+}
+static const bool leaninfer_eval_cb_available = false;
+#else
 extern "C" void leaninfer_metal_set_eval_cb(
         struct llama_context              * ctx,
         ggml_backend_sched_eval_callback    cb,
-        void                              * user_data) __attribute__((weak));
+        void                              * user_data);
+static const bool leaninfer_eval_cb_available = true;
+#endif
 
 
 #include <cstdio>
@@ -601,12 +614,12 @@ static bool li_install_eval_callback(leaninfer_metal_context * li) {
     // in llama.cpp (added below). The callback pointer li_eval_callback is
     // passed there.
     //
-    if (leaninfer_metal_set_eval_cb) {
-        leaninfer_metal_set_eval_cb(li->llama_ctx, li_eval_callback, li);
+    leaninfer_metal_set_eval_cb(li->llama_ctx, li_eval_callback, li);
+    if (leaninfer_eval_cb_available) {
         fprintf(stderr, "leaninfer-metal: eval callback registered\n");
     } else {
-        fprintf(stderr, "leaninfer-metal: eval callback not available "
-                "(upstream llama.cpp missing Phase 2b hook)\n");
+        fprintf(stderr, "leaninfer-metal: eval callback stub "
+                "(rebuild with -DLEANINFER_HAS_EVAL_CB to enable)\n");
     }
     return true;
 }
