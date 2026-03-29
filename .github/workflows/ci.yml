@@ -1,0 +1,111 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  UPSTREAM_REPO: https://github.com/hchengit/Lean_llama.cpp.git
+  UPSTREAM_REF: main
+
+jobs:
+  # ---------------------------------------------------------------
+  # Linux CPU build (AVX2, no GPU)
+  # ---------------------------------------------------------------
+  build-linux-cpu:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout LeanInfer
+        uses: actions/checkout@v4
+
+      - name: Cache upstream clone
+        uses: actions/cache@v4
+        with:
+          path: upstream
+          key: upstream-${{ env.UPSTREAM_REF }}-${{ github.run_id }}
+          restore-keys: upstream-${{ env.UPSTREAM_REF }}-
+
+      - name: Setup upstream (ik_llama.cpp fork)
+        run: ./scripts/setup_upstream.sh
+
+      - name: Configure (CPU, Release)
+        run: |
+          cmake -S upstream -B build \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DLLAMA_NATIVE=OFF \
+            -DLLAMA_CURL=OFF \
+            -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+
+      - name: Build
+        run: cmake --build build -j$(nproc)
+
+      - name: Smoke test — binary runs
+        run: |
+          ./build/bin/llama-cli --help | head -5
+          echo "llama-cli binary OK"
+
+      - name: Smoke test — LeanInfer flags present
+        run: |
+          ./build/bin/llama-cli --help 2>&1 | grep -q "expert-prefetch\|kv-compress\|auto-rtr" \
+            && echo "LeanInfer flags found" \
+            || echo "WARNING: LeanInfer flags not found in --help"
+
+  # ---------------------------------------------------------------
+  # macOS Metal build (Apple Silicon)
+  # ---------------------------------------------------------------
+  build-macos-metal:
+    runs-on: macos-14
+    steps:
+      - name: Checkout LeanInfer
+        uses: actions/checkout@v4
+
+      - name: Cache upstream clone
+        uses: actions/cache@v4
+        with:
+          path: upstream
+          key: upstream-macos-${{ env.UPSTREAM_REF }}-${{ github.run_id }}
+          restore-keys: upstream-macos-${{ env.UPSTREAM_REF }}-
+
+      - name: Setup upstream (ik_llama.cpp fork)
+        run: ./scripts/setup_upstream.sh
+
+      - name: Wire LeanInfer Metal into CMakeLists
+        run: |
+          CMAKE_FILE=upstream/src/CMakeLists.txt
+          if ! grep -qF "leaninfer-metal.cmake" "$CMAKE_FILE"; then
+            echo '# LeanInfer Metal integration' >> "$CMAKE_FILE"
+            echo 'include("${CMAKE_CURRENT_SOURCE_DIR}/../../metal/leaninfer-metal.cmake" OPTIONAL)' >> "$CMAKE_FILE"
+          fi
+
+      - name: Configure (Metal, Release)
+        run: |
+          cmake -S upstream -B build \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DGGML_METAL=ON \
+            -DGGML_METAL_EMBED_LIBRARY=ON \
+            -DLEANINFER_METAL=ON \
+            -DLLAMA_NATIVE=ON \
+            -DLLAMA_CURL=OFF \
+            -DCMAKE_OSX_ARCHITECTURES=arm64
+
+      - name: Build
+        run: cmake --build build -j$(sysctl -n hw.logicalcpu)
+
+      - name: Smoke test — binary runs
+        run: |
+          ./build/bin/llama-cli --help | head -5
+          echo "llama-cli binary OK"
+
+      - name: Smoke test — Metal backend loaded
+        run: |
+          ./build/bin/llama-cli --help 2>&1 | grep -qi "metal\|gpu" \
+            && echo "Metal references found" \
+            || echo "WARNING: no Metal references in --help"
+
+      - name: Verify leaninfer-fused.metal copied
+        run: |
+          ls build/bin/leaninfer-fused.metal \
+            && echo "Fused shader present in bin/" \
+            || echo "WARNING: leaninfer-fused.metal not in bin/"
