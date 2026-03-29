@@ -4,6 +4,10 @@
 #   include("${CMAKE_CURRENT_SOURCE_DIR}/../../cuda/leaninfer-cuda.cmake" OPTIONAL)
 #
 # Enable with:  cmake -DLEANINFER_CUDA=ON -DGGML_CUDA=ON ...
+#
+# Fix: builds CUDA kernels as a separate static library (leaninfer_cuda) and
+# links it into llama. This avoids the CMake issue where target_sources with
+# absolute paths outside the source tree produces .o files the linker can't find.
 
 cmake_minimum_required(VERSION 3.17)
 
@@ -14,23 +18,44 @@ if (LEANINFER_CUDA AND NOT GGML_CUDA)
 elseif (LEANINFER_CUDA)
     set(_LI_CUDA_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../cuda")
 
-    # Add CUDA kernel source files to the llama target.
-    # These compile as CUDA (.cu) — CMake handles nvcc dispatch automatically.
-    target_sources(llama PRIVATE
+    # Ensure CUDA language is enabled
+    enable_language(CUDA)
+
+    # Build fused kernels as a separate static library
+    add_library(leaninfer_cuda STATIC
         "${_LI_CUDA_DIR}/leaninfer-fused-ffn.cu"
         "${_LI_CUDA_DIR}/leaninfer-fused-deltanet.cu"
     )
 
-    target_compile_definitions(llama PUBLIC LEANINFER_CUDA)
-
-    # Allow #include "leaninfer-cuda.h" from llama and downstream targets.
-    target_include_directories(llama PUBLIC "${_LI_CUDA_DIR}")
-
-    # Ensure compute capability ≥ 7.0 (Volta+) for warp shuffle intrinsics.
-    # ik_llama.cpp already sets CUDA architectures; we just verify the minimum.
-    if (NOT CMAKE_CUDA_ARCHITECTURES)
-        set(CMAKE_CUDA_ARCHITECTURES "70;75;80;86;89;90" PARENT_SCOPE)
+    # Set CUDA architectures (inherit from parent or set defaults)
+    if (CMAKE_CUDA_ARCHITECTURES)
+        set_target_properties(leaninfer_cuda PROPERTIES
+            CUDA_ARCHITECTURES "${CMAKE_CUDA_ARCHITECTURES}")
+    else()
+        set_target_properties(leaninfer_cuda PROPERTIES
+            CUDA_ARCHITECTURES "70;75;80;86;89;90")
     endif()
 
-    message(STATUS "LeanInfer CUDA fused kernels ENABLED — FFN + DeltaNet")
+    # CUDA compilation flags
+    target_compile_options(leaninfer_cuda PRIVATE
+        $<$<COMPILE_LANGUAGE:CUDA>:--expt-relaxed-constexpr>)
+
+    # Position-independent code (needed when linking into shared lib)
+    set_target_properties(leaninfer_cuda PROPERTIES
+        POSITION_INDEPENDENT_CODE ON
+        CUDA_SEPARABLE_COMPILATION OFF)
+
+    # Include path for leaninfer-cuda.h
+    target_include_directories(leaninfer_cuda PUBLIC "${_LI_CUDA_DIR}")
+
+    # Link the static library into llama
+    target_link_libraries(llama PRIVATE leaninfer_cuda)
+
+    # Expose LEANINFER_CUDA define so #ifdef guards compile in
+    target_compile_definitions(llama PUBLIC LEANINFER_CUDA)
+
+    # Also expose the include path to llama consumers
+    target_include_directories(llama PUBLIC "${_LI_CUDA_DIR}")
+
+    message(STATUS "LeanInfer CUDA fused kernels ENABLED — FFN + DeltaNet (separate static lib)")
 endif()

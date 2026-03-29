@@ -17,25 +17,11 @@
 //
 // SPDX-License-Identifier: MIT
 
-#include <cuda_runtime.h>
-#include <cuda_fp16.h>
-#include <cstdint>
-#include <cmath>
+#include "leaninfer-cuda-common.cuh"
 
-// ---------------------------------------------------------------------------
-// Warp-level primitives
-// ---------------------------------------------------------------------------
-__device__ __forceinline__ float warp_reduce_sum_f32(float val) {
-    #pragma unroll
-    for (int offset = 16; offset > 0; offset >>= 1) {
-        val += __shfl_xor_sync(0xffffffff, val, offset);
-    }
-    return val;
-}
-
-__device__ __forceinline__ float silu_f32(float x) {
-    return x / (1.0f + expf(-x));
-}
+// Aliases for readability
+#define warp_reduce_sum_f32 li_warp_reduce_sum
+#define silu_f32 li_silu
 
 // ---------------------------------------------------------------------------
 // li_fused_rms_norm_matmul_f32
