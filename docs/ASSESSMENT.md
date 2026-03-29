@@ -210,6 +210,36 @@ Key Findings — What The Data Proves:
 | Simdgroup matrix ops (M1–M4) | 🔜 Next | Replace scalar SIMD dots with `simdgroup_matrix` 8×8 HW multiply |
 | Dynamic CPU/GPU routing (op-level) | ✅ Tested | RMSNorm/RoPE→CPU tested via `LEANINFER_CPU_SMALL_OPS=1`. No measurable impact on 0.5B (±0.3%). Kept as opt-in env var. May help on 9B+. |
 | M5/Metal 4 TensorOps + cooperative tensors | 🔜 Deferred | Requires M5 hardware. API is backwards-compatible; code path covers M1–M5. |
+| **Push M2 eval callback to upstream fork** | ⚠️ TODO | See instructions below |
+
+##### TODO: Push M2 eval callback changes to `hchengit/Lean_llama.cpp`
+
+> **Do this on the M2 Mac before your next CI run or Linux pull.**
+>
+> The Phase 2b eval callback wiring (done on M2) modified 3 files in
+> `upstream/` that are NOT yet pushed to the `hchengit/Lean_llama.cpp` fork.
+> The Linux machine pushed all Phase 0-3 changes (`5497f0db`) but those
+> predate the M2 work. Without this push, CI's macOS Metal build will
+> compile but the fused kernel dispatch won't activate.
+>
+> **On M2, from the `upstream/` directory:**
+>
+> ```bash
+> cd upstream
+> git status   # should show modified: llama.h, llama-context.h, llama.cpp, examples/main/main.cpp
+>
+> git add include/llama.h src/llama-context.h src/llama.cpp examples/main/main.cpp
+> git commit -m "Phase 2b: eval callback wiring for Metal fused dispatch
+>
+> - llama-context.h: metal_eval_cb + metal_eval_cb_data fields
+> - llama.cpp: leaninfer_metal_set_eval_cb() impl + chained callback in expert_log_sched_eval_cb
+> - llama.h: leaninfer_metal_set_eval_cb() public API
+> - main.cpp: leaninfer_metal_init() call after context creation"
+>
+> git push origin main
+> ```
+>
+> After pushing, verify on Linux: `cd upstream && git pull origin main`
 
 ---
 
