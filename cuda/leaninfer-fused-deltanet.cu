@@ -53,7 +53,7 @@ __global__ void li_fused_rms_norm_multi_proj_f32(
         const int N_OUT,
         const float eps) {
 
-    constexpr int WARP_SIZE = 32;
+
     constexpr int N_WARPS = BLOCK_SIZE / WARP_SIZE;
 
     extern __shared__ float smem[];

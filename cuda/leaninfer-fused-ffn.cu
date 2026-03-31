@@ -48,7 +48,7 @@ __global__ void li_fused_rms_norm_matmul_f32(
         const int N,
         const float eps) {
 
-    constexpr int WARP_SIZE = 32;
+
     constexpr int N_WARPS = BLOCK_SIZE / WARP_SIZE;
 
     extern __shared__ float smem[];          // x_norm[K] + reduce_buf[N_WARPS]
@@ -122,7 +122,7 @@ __global__ void li_fused_rms_norm_swiglu_f32(
         const int N,
         const float eps) {
 
-    constexpr int WARP_SIZE = 32;
+
     constexpr int N_WARPS = BLOCK_SIZE / WARP_SIZE;
 
     extern __shared__ float smem[];
@@ -192,7 +192,7 @@ __global__ void li_fused_rms_norm_swiglu_f16(
         const int N,
         const float eps) {
 
-    constexpr int WARP_SIZE = 32;
+
     constexpr int N_WARPS = BLOCK_SIZE / WARP_SIZE;
 
     extern __shared__ char smem_raw[];
