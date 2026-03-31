@@ -1,8 +1,8 @@
 # LeanInfer — Technical Assessment & Architecture Plan
 
 **Date:** 2026-03-24
-**Status:** Phase 3 complete (Linux/CPU). Metal 3.5× on M2. CUDA fused kernels written, pending cloud GPU.
-**Last Updated:** 2026-03-29
+**Status:** Phase 3 complete. Metal 3.5× (M2). CUDA baselines: 842/137 tok/s (0.5B/9B on 4090). Fused kernels pending eval callback wiring.
+**Last Updated:** 2026-03-31
 
 ---
 
@@ -15,8 +15,8 @@
 | Git repo initialized | ✅ Done | `/home/junc/LeanInfer/` (7 commits, main branch) |
 | ik_llama.cpp cloned + built (CPU/AVX2) | ✅ Built | `upstream/` (Ryzen 7735U, 8 threads, no CUDA) |
 | Test model (Qwen 2.5-0.5B Q4_K_M) | ✅ Downloaded | `models/qwen2.5-0.5b-instruct-q4_k_m.gguf` (469 MB) |
-| Remote repo (GitHub) | ⬜ Not started | — |
-| CI pipeline (Linux + macOS) | ⬜ Not started | — |
+| Remote repo (GitHub) | ✅ Done | `hchengit/LeanInfer` + `hchengit/Lean_llama.cpp` (upstream fork) |
+| CI pipeline (Linux + macOS) | ✅ Done | `.github/workflows/ci.yml` — Linux CPU (`ubuntu-latest`) + macOS Metal (`macos-14`) |
 
 ### Phase 0: Instrument & Measure
 
@@ -775,10 +775,10 @@ from eliminating `linear_attn_out` traffic will show up most.
 
 | Metric | Baseline (ggml CUDA) | Fused kernels | Delta |
 |--------|---------------------|---------------|-------|
-| Decode tok/s (0.5B, 4090) | 842 | pending cmake fix | — |
-| Prefill tok/s (0.5B, 4090) | 481 | pending cmake fix | — |
-| Decode tok/s (9B, 4090) | 137 | pending cmake fix | — |
-| Prefill tok/s (9B, 4090) | 252 | pending cmake fix | — |
+| Decode tok/s (0.5B, 4090) | 842 | pending eval callback wiring | — |
+| Prefill tok/s (0.5B, 4090) | 481 | pending eval callback wiring | — |
+| Decode tok/s (9B, 4090) | 137 | pending eval callback wiring | — |
+| Prefill tok/s (9B, 4090) | 252 | pending eval callback wiring | — |
 
 ---
 
