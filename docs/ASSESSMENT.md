@@ -826,6 +826,77 @@ from eliminating `linear_attn_out` traffic will show up most.
 > 2. Implement it in `ggml-cuda.cu` → calls `li_launch_fused_deltanet_recurrent_out_f32`
 > 3. Modify graph build to emit the new op when CUDA backend is active
 
+##### TODO: Next Vast.ai Session — CUDA Kernel Validation + Graph Integration
+
+> **Rent RTX 4090 (~$0.46/hr). Budget: ~$2 for full session.**
+>
+> **Phase A: Validate fused kernels (30 min)**
+>
+> ```bash
+> apt update && apt install -y cmake git
+> git clone https://github.com/hchengit/LeanInfer.git && cd LeanInfer
+> mkdir -p models
+>
+> # Build standalone kernel benchmark (no ggml needed)
+> nvcc -O3 -arch=sm_89 cuda/benchmark_fused.cu -o benchmark_fused
+> ./benchmark_fused
+> ```
+>
+> Record: correctness (PASS/FAIL), latency per FFN layer (µs), GFLOPS, bandwidth.
+> If any config shows FAIL, fix the kernel before proceeding.
+>
+> **Phase B: Baseline comparison (15 min)**
+>
+> Download models and run baseline ggml CUDA inference:
+> ```bash
+> ./scripts/setup_upstream.sh
+> ./scripts/cuda_build.sh --arch=89
+>
+> wget -O models/qwen2.5-0.5b-instruct-q4_k_m.gguf \
+>     "https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF/resolve/main/qwen2.5-0.5b-instruct-q4_k_m.gguf"
+> wget -O models/Qwen3.5-9B-Q4_K_M.gguf \
+>     "https://huggingface.co/unsloth/Qwen3.5-9B-GGUF/resolve/main/Qwen3.5-9B-Q4_K_M.gguf"
+>
+> # Baseline (should match ~890 / ~143 tok/s from previous session)
+> ./build-cuda/bin/llama-cli --model models/qwen2.5-0.5b-instruct-q4_k_m.gguf \
+>     -ngl 99 -n 128 --ignore-eos -p "Write a short story about a robot." 2>&1 | tail -8
+> ./build-cuda/bin/llama-cli --model models/Qwen3.5-9B-Q4_K_M.gguf \
+>     -ngl 99 -n 128 -p "Write a short story about a robot." 2>&1 | tail -8
+> ```
+>
+> **Phase C: Graph-level DeltaNet fusion (1–2 hrs)**
+>
+> This is the real optimization work. Requires modifying ik_llama.cpp:
+>
+> 1. **Register new op** — add `GGML_OP_LEANINFER_DELTANET_FUSED` to
+>    `upstream/ggml/include/ggml.h` (in the `ggml_op` enum) and
+>    `upstream/ggml/src/ggml.c` (op name string table).
+>
+> 2. **CUDA dispatch** — in `upstream/ggml/src/ggml-cuda.cu`, add a case for
+>    the new op that calls `li_launch_fused_deltanet_recurrent_out_f32` from
+>    `cuda/leaninfer-fused-deltanet.cu`.
+>
+> 3. **Graph builder** — in `upstream/src/llama-build-context.cpp`, find
+>    `build_delta_net()`. Replace the pattern:
+>    ```
+>    delta_net_recurrent(q, k, v, g, beta, state) → per-head output
+>    linear_attn_out = MUL_MAT(W_out, per-head output)
+>    ```
+>    with a single:
+>    ```
+>    fused_output = LEANINFER_DELTANET_FUSED(q, k, v, g, beta, state, W_out)
+>    ```
+>
+> 4. **Benchmark** — re-run 9B decode. Compare against 143 tok/s baseline.
+>    Expected improvement: **5–10%** (DeltaNet layers are 9.2% of compute;
+>    fusion eliminates ~1.1 MB/token of intermediate traffic).
+>
+> **Phase D: Record results and delete instance**
+>
+> Fill in the fused kernel column in the benchmark table above.
+> `git commit` and `git push` results from the instance before deleting.
+> Delete instance via Vast.ai Instances page → trash can icon.
+
 ---
 
 **Phase 3d notes:**
