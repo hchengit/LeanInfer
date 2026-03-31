@@ -775,10 +775,56 @@ from eliminating `linear_attn_out` traffic will show up most.
 
 | Metric | Baseline (ggml CUDA) | Fused kernels | Delta |
 |--------|---------------------|---------------|-------|
-| Decode tok/s (0.5B, 4090) | 842 | pending eval callback wiring | — |
-| Prefill tok/s (0.5B, 4090) | 481 | pending eval callback wiring | — |
-| Decode tok/s (9B, 4090) | 137 | pending eval callback wiring | — |
-| Prefill tok/s (9B, 4090) | 252 | pending eval callback wiring | — |
+| Decode tok/s (0.5B, 4090) | 890 | pending graph integration | — |
+| Prefill tok/s (0.5B, 4090) | 767 | pending graph integration | — |
+| Decode tok/s (9B, 4090) | 143 | pending graph integration | — |
+| Prefill tok/s (9B, 4090) | 334 | pending graph integration | — |
+
+##### CUDA Optimization Strategy (revised 2026-03-31)
+
+> **Key discovery:** Unlike Metal, the CUDA backend **already implements**
+> `GGML_OP_FUSED_UP_GATE` natively (`ggml_cuda_up_gate_unary` in `ggml-cuda.cu`).
+> This means:
+>
+> - The Metal `fused_up_gate=false` trick is **irrelevant on CUDA** (no CPU fallback)
+> - The eval callback approach (post-op hook) **cannot speed up CUDA** — it would
+>   double-compute since the original op already ran on GPU
+> - The correct path is **graph-level fusion** — modifying the ggml graph builder
+>   to emit our fused ops instead of the standard decomposed sequence
+>
+> **What this means for our fused kernels:**
+>
+> Our kernels fuse RMSNorm + SwiGLU into one dispatch. The existing CUDA path does:
+>   1. `RMSNorm` (separate kernel) → write x_norm to global memory
+>   2. `FUSED_UP_GATE` (reads x_norm, computes gate+up+SiLU×mul)
+>
+> Our fused kernel eliminates step 1's write + step 2's read = **1 global memory
+> round-trip per FFN layer**. On 9B (32 layers), that's 32 × 2 × 3584 × 4 bytes =
+> ~900 KB saved per token. At 1 TB/s bandwidth, that's ~0.9 µs — **negligible**.
+>
+> **The real CUDA optimization opportunity is the DeltaNet fused kernel:**
+> The existing path does `delta_net_recurrent` → write per-head outputs → separate
+> `MUL_MAT` for `linear_attn_out`. Our fused kernel computes both in one launch,
+> saving 24 heads × 128 floats × 2 (write+read) = 24 KB per token per layer.
+> With 24 DeltaNet layers, that's ~1.1 MB per token — **meaningful at ~1 µs savings**.
+>
+> **Next step: standalone kernel benchmark** (does not require graph integration):
+> ```bash
+> # On Vast.ai RTX 4090:
+> cd /workspace/LeanInfer
+> nvcc -O3 -arch=sm_89 cuda/benchmark_fused.cu -o benchmark_fused
+> ./benchmark_fused
+> ```
+> This validates correctness (CPU reference comparison) and measures raw kernel
+> throughput. If the numbers look good, proceed to graph integration.
+>
+> **Graph integration path (future):**
+> Modify `upstream/src/llama-build-context.cpp` in `build_delta_net()` to replace
+> the separate `delta_net_recurrent` + `linear_attn_out MUL_MAT` with a single
+> custom GGML op that dispatches our fused kernel. This requires:
+> 1. Register `GGML_OP_LEANINFER_DELTANET_FUSED` in ggml
+> 2. Implement it in `ggml-cuda.cu` → calls `li_launch_fused_deltanet_recurrent_out_f32`
+> 3. Modify graph build to emit the new op when CUDA backend is active
 
 ---
 
