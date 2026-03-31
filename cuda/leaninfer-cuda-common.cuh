@@ -6,6 +6,10 @@
 #include <cuda_fp16.h>
 #include <cstdint>
 
+#ifndef WARP_SIZE
+#define WARP_SIZE 32
+#endif
+
 __device__ __forceinline__ float li_warp_reduce_sum(float val) {
     #pragma unroll
     for (int offset = 16; offset > 0; offset >>= 1) {
