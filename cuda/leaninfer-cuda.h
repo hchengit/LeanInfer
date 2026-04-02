@@ -32,6 +32,13 @@ void li_launch_fused_rms_norm_swiglu_f16(
         const void  * W_gate, const void  * W_up,
         float * hidden, int K, int N, float eps, void * stream);
 
+// Fused RMSNorm + SiLU-gate for DeltaNet gated output
+// dst[r][k] = silu(z[r][k]) * (output[r][k] * gamma[k] * rms_scale)
+// Replaces 2 kernel launches (RMSNorm + fused_mul_unary) with 1.
+void li_launch_fused_rms_norm_silu_gate_f32(
+        const float * output, const float * z, const float * gamma,
+        float * dst, int K, int n_rows, float eps, void * stream);
+
 // Fused DeltaNet recurrent + output projection
 void li_launch_fused_deltanet_recurrent_out_f32(
         const float * q, const float * k, const float * v,
@@ -47,6 +54,9 @@ void li_launch_fused_deltanet_recurrent_out_f32(
 #else  // no CUDA
 
 // Stubs
+static inline void li_launch_fused_rms_norm_silu_gate_f32(
+        const float*o,const float*z,const float*g,float*d,int K,int nr,float e,void*s)
+        {(void)o;(void)z;(void)g;(void)d;(void)K;(void)nr;(void)e;(void)s;}
 static inline void li_launch_fused_rms_norm_matmul_f32(
         const float*x,const float*g,const float*W,float*d,int K,int N,float e,void*s)
         {(void)x;(void)g;(void)W;(void)d;(void)K;(void)N;(void)e;(void)s;}

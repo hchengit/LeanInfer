@@ -25,6 +25,7 @@ elseif (LEANINFER_CUDA)
     add_library(leaninfer_cuda STATIC
         "${_LI_CUDA_DIR}/leaninfer-fused-ffn.cu"
         "${_LI_CUDA_DIR}/leaninfer-fused-deltanet.cu"
+        "${_LI_CUDA_DIR}/leaninfer-fused-gate.cu"
     )
 
     # Set CUDA architectures (inherit from parent or set defaults)

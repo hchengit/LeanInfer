@@ -897,22 +897,43 @@ Phase B: Baselines confirmed (845/137 tok/s, within normal variance of prior ses
 > **Actionable improvements (sorted by expected impact):**
 >
 > 1. **Kernel launch fusion** — combine norm+gate+silu into one kernel per layer
->    (saves ~48 launches/token = ~240-480 µs). Modify `build_gated_output()` to
->    emit `GGML_OP_FUSED_RMS_SILU_GATE` instead of 3 separate ops.
->    Expected: **~5% decode improvement** on 9B.
+>    (saves ~48 launches/token). Modify `build_gated_output()` in
+>    `llama-delta-net.cpp` to emit `GGML_OP_FUSED_RMS_SILU_GATE` instead of 3
+>    separate ops. Kernel written: `cuda/leaninfer-fused-gate.cu`.
+>    Expected: **~3-5% decode improvement** on 9B (reduces graph node count +
+>    eliminates norm_out intermediate write).
 >
-> 2. **Graph caching** — ik_llama.cpp's `can_reuse_graph()` already handles this
->    partially, but verify it's active on the 4090 with `have 2 graphs` output.
->    (Already confirmed: output shows "have 2 graphs".)
+> 2. ~~**CUDA graph capture**~~ — **Already active.** `USE_CUDA_GRAPH` is defined
+>    by default in ik_llama.cpp when `CUDART_VERSION >= 12000` (our 4090 has CUDA 13.0).
+>    Confirmed by benchmark output: `~ggml_backend_cuda_context: have 2 graphs`.
+>    This means our 137-143 tok/s baseline **already includes CUDA graph optimization**.
+>    No further work needed here.
 >
-> 3. **CUDA graph capture** — capture the entire decode graph into a CUDA graph
->    for single-launch replay. This would eliminate ALL launch overhead.
->    ik_llama.cpp partially supports this — investigate `ggml_backend_cuda_graph`.
->    Expected: **~10-15% decode improvement** if launch overhead is the bottleneck.
+> 3. **Graph caching** — `can_reuse_graph()` confirmed active (2 graphs = prompt + decode).
+>
+> **Bottom line on CUDA DeltaNet decode:**
+>
+> The 137-143 tok/s (9B, RTX 4090) is already highly optimized:
+> - CUDA graphs eliminate kernel launch overhead ✅
+> - cuBLAS handles GEMM at near-peak bandwidth ✅
+> - The existing DeltaNet kernel is well-tuned (register-resident state) ✅
+>
+> The remaining ~3-5% comes from our fused norm+gate+silu kernel, which merges
+> 2 kernel nodes per DeltaNet layer into 1 (saves 24 graph nodes + 24 global
+> memory round-trips on the norm_out intermediate). Worth doing for cleanliness,
+> but won't dramatically change the numbers.
+>
+> **Why M2 still wins 2.1× on decode:** Not about launch overhead (graphs fix
+> that). It's about **memory access patterns**: the DeltaNet recurrent state
+> (128×128 per head × 24 heads = 9.4 MB) must be read and written every token.
+> On M2 with unified memory, the state lives in the same address space as the
+> GPU — zero-copy. On the 4090, even with CUDA graphs, the state must be read
+> from and written to HBM via the GPU memory controller. M2's advantage is
+> **architectural**, not just software.
 
-##### TODO: Next Vast.ai Session
+##### TODO: Next Vast.ai Session — Fused Gate Kernel Integration
 
-> **Focus: kernel launch fusion (#1 above) + CUDA graph investigation (#3)**
+> **Rent RTX 4090 (~$0.46/hr). Budget: ~$1.**
 >
 > ```bash
 > apt update && apt install -y cmake git
@@ -923,13 +944,16 @@ Phase B: Baselines confirmed (845/137 tok/s, within normal variance of prior ses
 > wget -O models/Qwen3.5-9B-Q4_K_M.gguf \
 >     "https://huggingface.co/unsloth/Qwen3.5-9B-GGUF/resolve/main/Qwen3.5-9B-Q4_K_M.gguf"
 >
-> # Baseline
+> # Confirm baseline
 > ./build-cuda/bin/llama-cli --model models/Qwen3.5-9B-Q4_K_M.gguf \
 >     -ngl 99 -n 128 -p "Write a short story about a robot." 2>&1 | tail -8
 > ```
 >
-> Then implement the fused norm+gate+silu kernel and graph builder change.
-> Record before/after tok/s. Delete instance when done.
+> Then: wire the fused gate kernel into `build_gated_output()` in
+> `llama-delta-net.cpp`. Replace the separate `llm_build_norm` +
+> `ggml_fused_mul_unary` with a single custom op dispatching
+> `li_fused_rms_norm_silu_gate_f32`. Record before/after.
+> Delete instance when done.
 
 ---
 
