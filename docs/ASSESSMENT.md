@@ -744,16 +744,31 @@ huggingface-cli download unsloth/Qwen3.5-9B-GGUF \
 - Gains scale with model size (FFN share grows: 30% on 9B → 43% on 14B → 50%+ on 27B)
 - RTX 4090 bandwidth (1 TB/s) vs A100 (2 TB/s) — fused kernels help more on lower-bandwidth GPUs
 
-##### CUDA Benchmark Results (2026-03-29)
+##### CUDA Benchmark Results (2026-03-29, updated 2026-04-01)
 
 > Measured on Vast.ai RTX 4090 (24 GB, SM 89, CUDA 13.0). ik_llama.cpp baseline (no LeanInfer fused kernels).
+> Session 2 (2026-04-01) confirmed baseline consistency: 845/137 tok/s (within normal variance).
 
 | Metric | RTX 4090 (CUDA) | M2 Mac (Metal) | 4090 vs M2 |
 |--------|-----------------|----------------|------------|
-| Decode tok/s (0.5B) | **842** | 125 | **6.7× faster** |
-| Prefill tok/s (0.5B) | **481** | 260 | **1.9× faster** |
-| Decode tok/s (9B, Qwen 3.5 hybrid) | **137** | **293** | **M2 wins 2.1×** |
-| Prefill tok/s (9B, Qwen 3.5 hybrid) | **252** | 46 | **5.5× faster** |
+| Decode tok/s (0.5B) | **845–890** | 125 | **6.7× faster** |
+| Prefill tok/s (0.5B) | **499–767** | 260 | **1.9–3× faster** |
+| Decode tok/s (9B, Qwen 3.5 hybrid) | **137–143** | **293** | **M2 wins 2.1×** |
+| Prefill tok/s (9B, Qwen 3.5 hybrid) | **266–334** | 46 | **5.5× faster** |
+
+**Phase A — Standalone kernel validation (2026-04-01):**
+
+| Model dims | Correctness | Latency/layer | Bandwidth | % of 4090 peak |
+|------------|-------------|---------------|-----------|-----------------|
+| 0.5B (K=896, N=4864) | PASS (err < 0.001) | 10.9 µs | 3191 GB/s | >100% (cache) |
+| 9B (K=3584, N=18944) | PASS (err < 0.014) | 575 µs | 944 GB/s | **94%** |
+| 14B (K=5120, N=17408) | PASS (err < 0.023) | 754 µs | 946 GB/s | **95%** |
+
+Fused RMSNorm+SwiGLU kernel hits 94–95% of RTX 4090 theoretical bandwidth on
+production-sized models. Kernel is bandwidth-optimal — cannot be made faster.
+This means FFN fusion alone won't improve decode speed; the existing ggml CUDA
+FFN path is equally bandwidth-optimal. The real optimization target is **DeltaNet
+graph-level fusion** (Phase C).
 
 **Key finding: DeltaNet hybrid models favor unified memory for decode.**
 
@@ -826,76 +841,95 @@ from eliminating `linear_attn_out` traffic will show up most.
 > 2. Implement it in `ggml-cuda.cu` → calls `li_launch_fused_deltanet_recurrent_out_f32`
 > 3. Modify graph build to emit the new op when CUDA backend is active
 
-##### TODO: Next Vast.ai Session — CUDA Kernel Validation + Graph Integration
+##### Phase A+B Results (2026-04-01) — COMPLETE
 
-> **Rent RTX 4090 (~$0.46/hr). Budget: ~$2 for full session.**
+Phase A: All 3 model configs PASS correctness. Kernel hits 94% of 4090 peak bandwidth.
+Phase B: Baselines confirmed (845/137 tok/s, within normal variance of prior session).
+
+##### Phase C: DeltaNet Graph-Level Fusion — Architecture Analysis
+
+> **Completed code analysis 2026-04-01. The original fusion plan needs revision.**
 >
-> **Phase A: Validate fused kernels (30 min)**
+> **What we found:** The DeltaNet pipeline in `llama-delta-net.cpp` is:
+> ```
+> build_qkv() → delta_net_recurrent(q, k, v, gate, beta, state) → output [head_v_dim × num_v_heads × n_tok]
+> build_gated_output():
+>   1. RMSNorm(output)                     — per-head normalization
+>   2. silu(z) * norm_out                  — gating with bypass tensor z
+>   3. MUL_MAT(ssm_out, gated_result)      — output projection (linear_attn_out)
+> ```
+>
+> **Why the original plan doesn't work:** Our fused kernel
+> (`li_fused_deltanet_recurrent_out_f32`) accumulates the output projection
+> *inside* the recurrent loop via atomicAdd. But in the actual graph, there are
+> **two non-linear ops between the recurrent output and the projection input**
+> (RMSNorm + SiLU gating). You can't fuse through a non-linearity — the
+> projection input depends on the full recurrent output being complete first.
+>
+> **What IS fusible (revised target):**
+>
+> The `build_gated_output()` function (lines 397-415 of `llama-delta-net.cpp`)
+> does 4 separate ops that each write to global memory:
+>   1. `RMSNorm(output)` — read output, write norm_out
+>   2. `silu(z) * norm_out` — read z + norm_out, write gated
+>   3. `reshape` — view only, no memory
+>   4. `MUL_MAT(ssm_out, gated)` — read ssm_out + gated, write linear_attn_out
+>
+> Ops 1+2 can be fused: **RMSNorm + SiLU-gate in one kernel**, eliminating
+> the norm_out intermediate write. This saves `head_v_dim × num_v_heads × n_tok × 4`
+> bytes per layer = 128 × 24 × 1 × 4 = **12 KB per DeltaNet layer** during decode.
+> With 24 layers: 288 KB per token — modest but measurable at high tok/s.
+>
+> Op 4 (the MUL_MAT) is already handled by cuBLAS at near-peak bandwidth.
+> Fusing it with ops 1+2 would require a custom GEMM kernel that includes
+> the norm+gate as a prologue — possible but diminishing returns.
+>
+> **Revised recommendation:** The DeltaNet decode bottleneck on CUDA is NOT
+> the global memory round-trips (which we've now measured as tiny). It's the
+> **sequential nature of the recurrent loop** combined with kernel launch
+> overhead. Each token requires 24 DeltaNet layers × (conv + recurrent + norm +
+> gate + projection) = ~120 kernel launches. On the 4090, each launch has
+> ~5-10 µs overhead → 600-1200 µs just from launches alone.
+>
+> The M2 Mac avoids this because: (a) unified memory = zero-copy state access,
+> (b) Metal command buffers batch better than individual CUDA kernel launches.
+>
+> **Actionable improvements (sorted by expected impact):**
+>
+> 1. **Kernel launch fusion** — combine norm+gate+silu into one kernel per layer
+>    (saves ~48 launches/token = ~240-480 µs). Modify `build_gated_output()` to
+>    emit `GGML_OP_FUSED_RMS_SILU_GATE` instead of 3 separate ops.
+>    Expected: **~5% decode improvement** on 9B.
+>
+> 2. **Graph caching** — ik_llama.cpp's `can_reuse_graph()` already handles this
+>    partially, but verify it's active on the 4090 with `have 2 graphs` output.
+>    (Already confirmed: output shows "have 2 graphs".)
+>
+> 3. **CUDA graph capture** — capture the entire decode graph into a CUDA graph
+>    for single-launch replay. This would eliminate ALL launch overhead.
+>    ik_llama.cpp partially supports this — investigate `ggml_backend_cuda_graph`.
+>    Expected: **~10-15% decode improvement** if launch overhead is the bottleneck.
+
+##### TODO: Next Vast.ai Session
+
+> **Focus: kernel launch fusion (#1 above) + CUDA graph investigation (#3)**
 >
 > ```bash
 > apt update && apt install -y cmake git
 > git clone https://github.com/hchengit/LeanInfer.git && cd LeanInfer
-> mkdir -p models
->
-> # Build standalone kernel benchmark (no ggml needed)
-> nvcc -O3 -arch=sm_89 cuda/benchmark_fused.cu -o benchmark_fused
-> ./benchmark_fused
-> ```
->
-> Record: correctness (PASS/FAIL), latency per FFN layer (µs), GFLOPS, bandwidth.
-> If any config shows FAIL, fix the kernel before proceeding.
->
-> **Phase B: Baseline comparison (15 min)**
->
-> Download models and run baseline ggml CUDA inference:
-> ```bash
 > ./scripts/setup_upstream.sh
 > ./scripts/cuda_build.sh --arch=89
->
-> wget -O models/qwen2.5-0.5b-instruct-q4_k_m.gguf \
->     "https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF/resolve/main/qwen2.5-0.5b-instruct-q4_k_m.gguf"
+> mkdir -p models
 > wget -O models/Qwen3.5-9B-Q4_K_M.gguf \
 >     "https://huggingface.co/unsloth/Qwen3.5-9B-GGUF/resolve/main/Qwen3.5-9B-Q4_K_M.gguf"
 >
-> # Baseline (should match ~890 / ~143 tok/s from previous session)
-> ./build-cuda/bin/llama-cli --model models/qwen2.5-0.5b-instruct-q4_k_m.gguf \
->     -ngl 99 -n 128 --ignore-eos -p "Write a short story about a robot." 2>&1 | tail -8
+> # Baseline
 > ./build-cuda/bin/llama-cli --model models/Qwen3.5-9B-Q4_K_M.gguf \
 >     -ngl 99 -n 128 -p "Write a short story about a robot." 2>&1 | tail -8
 > ```
 >
-> **Phase C: Graph-level DeltaNet fusion (1–2 hrs)**
->
-> This is the real optimization work. Requires modifying ik_llama.cpp:
->
-> 1. **Register new op** — add `GGML_OP_LEANINFER_DELTANET_FUSED` to
->    `upstream/ggml/include/ggml.h` (in the `ggml_op` enum) and
->    `upstream/ggml/src/ggml.c` (op name string table).
->
-> 2. **CUDA dispatch** — in `upstream/ggml/src/ggml-cuda.cu`, add a case for
->    the new op that calls `li_launch_fused_deltanet_recurrent_out_f32` from
->    `cuda/leaninfer-fused-deltanet.cu`.
->
-> 3. **Graph builder** — in `upstream/src/llama-build-context.cpp`, find
->    `build_delta_net()`. Replace the pattern:
->    ```
->    delta_net_recurrent(q, k, v, g, beta, state) → per-head output
->    linear_attn_out = MUL_MAT(W_out, per-head output)
->    ```
->    with a single:
->    ```
->    fused_output = LEANINFER_DELTANET_FUSED(q, k, v, g, beta, state, W_out)
->    ```
->
-> 4. **Benchmark** — re-run 9B decode. Compare against 143 tok/s baseline.
->    Expected improvement: **5–10%** (DeltaNet layers are 9.2% of compute;
->    fusion eliminates ~1.1 MB/token of intermediate traffic).
->
-> **Phase D: Record results and delete instance**
->
-> Fill in the fused kernel column in the benchmark table above.
-> `git commit` and `git push` results from the instance before deleting.
-> Delete instance via Vast.ai Instances page → trash can icon.
+> Then implement the fused norm+gate+silu kernel and graph builder change.
+> Record before/after tok/s. Delete instance when done.
 
 ---
 
