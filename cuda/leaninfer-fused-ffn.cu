@@ -69,11 +69,13 @@ __global__ void li_fused_rms_norm_matmul_f32(
     if (lane_id == 0) reduce_buf[warp_id] = sq;
     __syncthreads();
 
-    float total = 0.0f;
-    if (tid < N_WARPS) total = reduce_buf[tid];
-    total = warp_reduce_sum_f32(total);
-    float rms_scale = rsqrtf(total / (float)K + eps);
+    if (tid == 0) {
+        float total = 0.0f;
+        for (int i = 0; i < N_WARPS; i++) total += reduce_buf[i];
+        reduce_buf[0] = rsqrtf(total / (float)K + eps);
+    }
     __syncthreads();
+    float rms_scale = reduce_buf[0];
 
     // -- Phase 2: normalize x → x_norm (all threads) --
     for (int k = tid; k < K; k += BLOCK_SIZE) {
@@ -143,11 +145,13 @@ __global__ void li_fused_rms_norm_swiglu_f32(
     if (lane_id == 0) reduce_buf[warp_id] = sq;
     __syncthreads();
 
-    float total = 0.0f;
-    if (tid < N_WARPS) total = reduce_buf[tid];
-    total = warp_reduce_sum_f32(total);
-    float rms_scale = rsqrtf(total / (float)K + eps);
+    if (tid == 0) {
+        float total = 0.0f;
+        for (int i = 0; i < N_WARPS; i++) total += reduce_buf[i];
+        reduce_buf[0] = rsqrtf(total / (float)K + eps);
+    }
     __syncthreads();
+    float rms_scale = reduce_buf[0];
 
     // -- Phase 2: compute x_norm --
     for (int k = tid; k < K; k += BLOCK_SIZE) {
@@ -213,11 +217,13 @@ __global__ void li_fused_rms_norm_swiglu_f16(
     if (lane_id == 0) reduce_buf[warp_id] = sq;
     __syncthreads();
 
-    float total = 0.0f;
-    if (tid < N_WARPS) total = reduce_buf[tid];
-    total = warp_reduce_sum_f32(total);
-    float rms_scale = rsqrtf(total / (float)K + eps);
+    if (tid == 0) {
+        float total = 0.0f;
+        for (int i = 0; i < N_WARPS; i++) total += reduce_buf[i];
+        reduce_buf[0] = rsqrtf(total / (float)K + eps);
+    }
     __syncthreads();
+    float rms_scale = reduce_buf[0];
 
     // -- Phase 2: compute x_norm as FP16 --
     for (int k = tid; k < K; k += BLOCK_SIZE) {
