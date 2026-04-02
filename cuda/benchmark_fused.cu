@@ -147,9 +147,7 @@ int main() {
 
     cudaDeviceProp prop;
     cudaGetDeviceProperties(&prop, 0);
-    printf("GPU: %s (SM %d.%d, %.0f GB/s bandwidth)\n",
-           prop.name, prop.major, prop.minor,
-           2.0 * prop.memoryClockRate * (prop.memoryBusWidth / 8) / 1e6);
+    printf("GPU: %s (SM %d.%d)\n", prop.name, prop.major, prop.minor);
     printf("Shared memory per block: %zu KB\n\n", prop.sharedMemPerBlock / 1024);
 
     const float eps = 1e-5f;
