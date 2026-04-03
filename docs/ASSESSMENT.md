@@ -1,8 +1,8 @@
 # LeanInfer — Technical Assessment & Architecture Plan
 
 **Date:** 2026-03-24
-**Status:** Phase 3 complete. Metal 3.5× (M2). CUDA baselines: 842/137 tok/s (0.5B/9B on 4090). Fused kernels pending eval callback wiring.
-**Last Updated:** 2026-03-31
+**Status:** All phases complete. Metal 3.5× (M2). CUDA fused gate integrated (+1.1%, at noise floor). See docs/RESULTS.md for full findings.
+**Last Updated:** 2026-04-03
 
 ---
 
@@ -790,10 +790,10 @@ from eliminating `linear_attn_out` traffic will show up most.
 
 | Metric | Baseline (ggml CUDA) | Fused kernels | Delta |
 |--------|---------------------|---------------|-------|
-| Decode tok/s (0.5B, 4090) | 890 | pending graph integration | — |
-| Prefill tok/s (0.5B, 4090) | 767 | pending graph integration | — |
-| Decode tok/s (9B, 4090) | 143 | pending graph integration | — |
-| Prefill tok/s (9B, 4090) | 334 | pending graph integration | — |
+| Decode tok/s (0.5B, 4090) | 890 | — | N/A (0.5B has no DeltaNet layers) |
+| Prefill tok/s (0.5B, 4090) | 767 | — | N/A |
+| Decode tok/s (9B, 4090) | 140 | **141.6** | **+1.1% (within noise)** |
+| Prefill tok/s (9B, 4090) | 334 | — | not re-tested |
 
 ##### CUDA Optimization Strategy (revised 2026-03-31)
 
