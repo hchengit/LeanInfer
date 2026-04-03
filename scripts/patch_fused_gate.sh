@@ -53,6 +53,9 @@ if ! grep -q "$MARKER" "$GGML_C"; then
     sed -i '/\[GGML_OP_DELTA_NET\]/a\
     [GGML_OP_FUSED_RMS_SILU_GATE]   = "FUSED_RMS_SILU_GATE",' "$GGML_C"
 
+    # Bump GGML_OP_COUNT assertions (101 → 102 with our new op)
+    sed -i 's/GGML_OP_COUNT == 101/GGML_OP_COUNT == 102/g' "$GGML_C"
+
     # Add constructor function before ggml_fill (which comes after delta_net)
     sed -i '/^\/\/ ggml_fill$/i\
 // LeanInfer: ggml_fused_rms_silu_gate\
