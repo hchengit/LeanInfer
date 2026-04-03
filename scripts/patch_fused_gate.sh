@@ -126,20 +126,55 @@ if ! grep -q "$MARKER" "$GGML_CUDA"; then
     # This avoids fragile sed insertions into switch statements.
     cat >> "$GGML_CUDA" << 'CUDA_PATCH'
 
-// --- LeanInfer: fused RMSNorm + SiLU-gate dispatch ---
-#include "leaninfer-cuda.h"
+// --- LeanInfer: fused RMSNorm + SiLU-gate for DeltaNet gated output ---
+// Inlined here to avoid include path issues (ggml target doesn't have cuda/ in its path).
+
+template <int BLOCK_SIZE = 256>
+__global__ void li_kernel_fused_rms_silu_gate_f32(
+        const float * __restrict__ output,
+        const float * __restrict__ z,
+        const float * __restrict__ gamma,
+        float       * __restrict__ dst,
+        const int K,
+        const float eps) {
+    const int row = blockIdx.x;
+    const int tid = threadIdx.x;
+    const float * out_row = output + (int64_t)row * K;
+    const float * z_row   = z      + (int64_t)row * K;
+    float       * dst_row = dst    + (int64_t)row * K;
+    __shared__ float reduce_buf[BLOCK_SIZE / WARP_SIZE];
+    float sq = 0.0f;
+    for (int k = tid; k < K; k += BLOCK_SIZE) { float v = out_row[k]; sq += v * v; }
+    sq = warp_reduce_sum(sq);
+    int warp_id = tid / WARP_SIZE;
+    int lane_id = tid % WARP_SIZE;
+    if (lane_id == 0) reduce_buf[warp_id] = sq;
+    __syncthreads();
+    if (tid == 0) {
+        float total = 0.0f;
+        for (int i = 0; i < BLOCK_SIZE / WARP_SIZE; i++) total += reduce_buf[i];
+        reduce_buf[0] = rsqrtf(total / (float)K + eps);
+    }
+    __syncthreads();
+    float rms_scale = reduce_buf[0];
+    for (int k = tid; k < K; k += BLOCK_SIZE) {
+        float norm_val = out_row[k] * gamma[k] * rms_scale;
+        float z_val = z_row[k];
+        dst_row[k] = (z_val / (1.0f + expf(-z_val))) * norm_val;
+    }
+}
 
 static void ggml_cuda_op_fused_rms_silu_gate(ggml_backend_cuda_context & ctx, ggml_tensor * dst) {
     float eps;
     memcpy(&eps, dst->op_params, sizeof(float));
     const int K = (int)dst->src[0]->ne[0];
     const int n_rows = (int)(ggml_nelements(dst->src[0]) / K);
-    li_launch_fused_rms_norm_silu_gate_f32(
+    li_kernel_fused_rms_silu_gate_f32<256><<<n_rows, 256, 0, ctx.stream()>>>(
         (const float *)dst->src[0]->data,
         (const float *)dst->src[1]->data,
         (const float *)dst->src[2]->data,
         (float *)dst->data,
-        K, n_rows, eps, ctx.stream());
+        K, eps);
 }
 CUDA_PATCH
 
