@@ -178,6 +178,12 @@ static void ggml_cuda_op_fused_rms_silu_gate(ggml_backend_cuda_context & ctx, gg
 }
 CUDA_PATCH
 
+    # Add forward declaration before the dispatch switch (needed because the
+    # function definition is appended at end of file, after the switch).
+    sed -i '/^static bool ggml_cuda_compute_forward/i\
+// LeanInfer forward declaration\
+static void ggml_cuda_op_fused_rms_silu_gate(ggml_backend_cuda_context \& ctx, ggml_tensor * dst);' "$GGML_CUDA"
+
     # Add dispatch case: insert after "case GGML_OP_FUSED_MUL_UNARY:" block
     # Use a precise one-shot insertion (match the exact break line after fused_mul_unary dispatch)
     sed -i '/ggml_cuda_op_fused_mul_unary(ctx, dst);/{
