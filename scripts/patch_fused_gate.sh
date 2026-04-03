@@ -122,36 +122,42 @@ GGML_CUDA="$UPSTREAM/ggml/src/ggml-cuda.cu"
 if ! grep -q "$MARKER" "$GGML_CUDA"; then
     echo "Patching $GGML_CUDA — adding CUDA dispatch"
 
-    # Add dispatch case after FUSED_MUL_UNARY
-    sed -i '/case GGML_OP_FUSED_MUL_UNARY:/,/break;/{
+    # Add forward declaration + dispatch function at end of file (before last closing brace)
+    # This avoids fragile sed insertions into switch statements.
+    cat >> "$GGML_CUDA" << 'CUDA_PATCH'
+
+// --- LeanInfer: fused RMSNorm + SiLU-gate dispatch ---
+#include "leaninfer-cuda.h"
+
+static void ggml_cuda_op_fused_rms_silu_gate(ggml_backend_cuda_context & ctx, ggml_tensor * dst) {
+    float eps;
+    memcpy(&eps, dst->op_params, sizeof(float));
+    const int K = (int)dst->src[0]->ne[0];
+    const int n_rows = (int)(ggml_nelements(dst->src[0]) / K);
+    li_launch_fused_rms_norm_silu_gate_f32(
+        (const float *)dst->src[0]->data,
+        (const float *)dst->src[1]->data,
+        (const float *)dst->src[2]->data,
+        (float *)dst->data,
+        K, n_rows, eps, ctx.stream());
+}
+CUDA_PATCH
+
+    # Add dispatch case: insert after "case GGML_OP_FUSED_MUL_UNARY:" block
+    # Use a precise one-shot insertion (match the exact break line after fused_mul_unary dispatch)
+    sed -i '/ggml_cuda_op_fused_mul_unary(ctx, dst);/{
+        n
         /break;/a\
         case GGML_OP_FUSED_RMS_SILU_GATE:\
-            {\
-                const float eps = ggml_get_op_params_f32(dst, 0);\
-                const int K = (int)dst->src[0]->ne[0];\
-                const int n_rows = (int)ggml_nrows(dst->src[0]);\
-                li_launch_fused_rms_norm_silu_gate_f32(\
-                    (const float *)dst->src[0]->data,\
-                    (const float *)dst->src[1]->data,\
-                    (const float *)dst->src[2]->data,\
-                    (float *)dst->data,\
-                    K, n_rows, eps, ctx.stream());\
-            } break;
+            ggml_cuda_op_fused_rms_silu_gate(ctx, dst);\
+            break;
     }' "$GGML_CUDA"
 
-    # Add supports_op case
-    sed -i '/case GGML_OP_FUSED_MUL_UNARY: return ggml_is_contiguous/a\
-        case GGML_OP_FUSED_RMS_SILU_GATE: return true;' "$GGML_CUDA"
-
-    # Add include for our kernel header at the top (after existing includes)
-    if ! grep -q "leaninfer-cuda.h" "$GGML_CUDA"; then
-        sed -i '1,/^#include/{
-            /^#include/a\
-#ifdef LEANINFER_CUDA\
-#include "leaninfer-cuda.h"\
-#endif
-        }' "$GGML_CUDA"
-    fi
+    # Add supports_op case (only once — match the FIRST occurrence in ggml_cuda_supports_op)
+    sed -i '0,/case GGML_OP_FUSED_MUL_UNARY: return ggml_is_contiguous/{
+        /case GGML_OP_FUSED_MUL_UNARY: return ggml_is_contiguous/a\
+        case GGML_OP_FUSED_RMS_SILU_GATE: return true;
+    }' "$GGML_CUDA"
 else
     echo "ggml-cuda.cu already patched"
 fi
