@@ -84,6 +84,11 @@ if [[ ! -d "$UPSTREAM_DIR/.git" ]]; then
     bash "$REPO_ROOT/scripts/setup_upstream.sh"
 fi
 
+# ---- Apply fused gate patches to upstream (idempotent) ----
+if [[ -f "$REPO_ROOT/scripts/patch_fused_gate.sh" ]]; then
+    bash "$REPO_ROOT/scripts/patch_fused_gate.sh"
+fi
+
 # ---- Wire LeanInfer CUDA + Metal cmake into upstream (idempotent) ----
 CMAKE_FILE="$UPSTREAM_DIR/src/CMakeLists.txt"
 
